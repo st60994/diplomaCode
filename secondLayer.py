@@ -28,9 +28,11 @@ class SecondLayer:
     pset = None
     first_layer_data = None
     terminal_values = {}
+    first_layer_pset = None
 
-    def __init__(self, subsets):
+    def __init__(self, subsets, first_layer_pset):
         self.subsets = subsets
+        self.first_layer_pset = first_layer_pset
 
     def __add_primitive_set(self, pset):
         pset.addPrimitive(operator.mul, 2)
@@ -50,7 +52,13 @@ class SecondLayer:
         pset.addTerminal(2.0)
         pset.addTerminal(3.0)
         for individual in self.subsets:
-            if individual not in self.subsets.keys:  # check if the subset is not already present as a terminal in the second layer
+            present = False
+            for terminal_list in pset.terminals.values():
+                for terminal in terminal_list:
+                    if individual == terminal.name:
+                        present = True
+                        break
+            if not present:
                 pset.addTerminal(self.subsets[individual], name=str(individual))
         print("Primitive Set Terminals:", pset.terminals)
         pset.renameArguments(ARG0="x")
@@ -86,7 +94,7 @@ class SecondLayer:
         toolbox.register("individual", tools.initIterate, creator.Individual, toolbox.expr)
 
         toolbox.register("population", tools.initRepeat, list, toolbox.individual)
-        gp.staticLimit(operator.attrgetter('height'), max_value=self.MAX_TREE_HEIGHT)
+        gp.staticLimit(operator.attrgetter('height'), max_value=self.MAX_TREE_HEIGHT) # TODO doesnt work either
         toolbox.register("evaluate", self.__evaluate_individual)
         toolbox.register("mate", koza_custom_two_point_crossover)
         toolbox.register("mutate", gp.mutNodeReplacement, pset=self.pset)
@@ -102,7 +110,7 @@ class SecondLayer:
             best_current_individual = tools.selBest(population, k=1)[0]
             fitness_values.append(best_current_individual.fitness.values[0])
             print(f"Best individual: {best_current_individual}, Fitness: {best_current_individual.fitness.values[0]}")
-            draw_individual(best_current_individual)
+            draw_individual(best_current_individual, self.first_layer_pset)
 
     def execute_run(self):
         toolbox = self.__prepare_run()

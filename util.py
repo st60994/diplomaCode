@@ -1,9 +1,12 @@
 import networkx as nx
-from deap import gp
+from deap import gp, creator
 from matplotlib import pyplot as plt
 
 
-def draw_individual(individual):
+def draw_individual(individual, pset):
+    print("Base individual " + str(individual))
+    individual = gp.PrimitiveTree.from_string(str(individual), pset)
+    print("Final individual " + str(individual))
     nodes, edges, labels = gp.graph(individual)
     print("Graph details: " + str(nodes) + "\n" + str(edges) + "\n" + str(labels))
     g = nx.Graph()
