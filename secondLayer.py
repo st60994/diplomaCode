@@ -7,8 +7,8 @@ from methodDefinitions import protectedAdd, sqrt, pow2, pow3
 from util import draw_individual
 
 
-def target_polynomial(x):
-    return 1 / x
+def target_polynomial(x, y):
+    return 1 / y + x
 
 
 class SecondLayer:
@@ -62,6 +62,7 @@ class SecondLayer:
                 pset.addTerminal(self.subsets[individual], name=str(individual))
         print("Primitive Set Terminals:", pset.terminals)
         pset.renameArguments(ARG0="x")
+        pset.renameArguments(ARG1="y")
         return pset
 
     # Define the fitness measure
@@ -70,11 +71,13 @@ class SecondLayer:
             compiled_individual = gp.compile(expr=individual, pset=self.pset)
 
             x_values = self.X_RANGE
+            y_values = self.X_RANGE
             errors = []
-            for i in x_values:
-                individual_output = compiled_individual(i)
-                error = abs(target_polynomial(i) - individual_output)
-                errors.append(error)
+            for x in x_values:
+                for y in y_values:
+                    individual_output = compiled_individual(x, y)
+                    error = abs(target_polynomial(x, y) - individual_output)
+                    errors.append(error)
             total_error = sum(errors)
             return total_error,
         except Exception as e:
@@ -82,7 +85,7 @@ class SecondLayer:
             return float('inf'),  # Return a high fitness in case of an error
 
     def __prepare_run(self):
-        self.pset = gp.PrimitiveSet("MAIN", 1)  # 1 input variable
+        self.pset = gp.PrimitiveSet("MAIN", 2)  # 2 input variables
         self.pset = self.__create_terminal_set(self.pset)
         self.pset = self.__add_primitive_set(self.pset)
 

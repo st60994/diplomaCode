@@ -17,14 +17,14 @@ TOURNAMENT_SIZE = 2
 ELITES_SIZE = 1
 NUMBER_OF_GENERATIONS = 20
 POPULATION_SIZE = 500
-NUMBER_OF_SUB_MODELS = 30
+NUMBER_OF_SUB_MODELS = 3
 MAX_TREE_HEIGHT = 17
 MIN_TREE_INIT = 3
 MAX_TREE_INIT = 3
 
 
-def target_polynomial(x):
-    return 1 / x
+def target_polynomial(x, y):
+    return 1 / y + x
 
 
 class FirstLayer:
@@ -38,11 +38,13 @@ class FirstLayer:
         try:
             function = gp.compile(expr=individual, pset=self.pset)
             x_values = X_RANGE
+            y_values = X_RANGE
             errors = []
-            for index in x_values:
-                individual_output = function(index)
-                error = abs(target_polynomial(index) - individual_output)
-                errors.append(error)
+            for x in x_values:
+                for y in y_values:
+                    individual_output = function(x, y)
+                    error = abs(target_polynomial(x, y) - individual_output)
+                    errors.append(error)
             total_error = sum(errors)
             return total_error,
         except Exception as e:

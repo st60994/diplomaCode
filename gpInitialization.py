@@ -11,7 +11,7 @@ class GpInitializer:
         self.pset = None
 
     def initialize_gp_run(self):
-        self.pset = gp.PrimitiveSet("MAIN", 1)  # 1 input variable
+        self.pset = gp.PrimitiveSet("MAIN", 2)  # 2 input variables
         self.__create_terminal_set()
         self.__add_primitive_set()
 
@@ -30,3 +30,4 @@ class GpInitializer:
         self.pset.addTerminal(2.0)
         self.pset.addTerminal(3.0)
         self.pset.renameArguments(ARG0="x")
+        self.pset.renameArguments(ARG1="y")
