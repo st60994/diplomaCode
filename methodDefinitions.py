@@ -1,7 +1,7 @@
 import math
 
 
-def protectedAdd(left, right):
+def protected_add(left, right):
     try:
         result = left + right
         if math.isinf(result) or math.isnan(result):

@@ -6,26 +6,31 @@ import traceback
 import multiprocessing
 
 from customLogic import koza_custom_two_point_crossover
-from gpInitialization import GpInitializer
+from gpInitialization import GpFirstLayerInitializer, GpSecondLayerInitializer, target_polynomial
 from secondLayer import SecondLayer
 
-LOWER_BOUND = 0.1
-UPPER_BOUND = 15
-STEP_SIZE = 0.1
-X_RANGE = np.arange(LOWER_BOUND, UPPER_BOUND + STEP_SIZE, STEP_SIZE)
+LOWER_BOUND_X = 0.1
+UPPER_BOUND_X = 15
+LOWER_BOUND_Y = 0.1
+UPPER_BOUND_Y = 15
+STEP_SIZE_X = 0.1
+STEP_SIZE_Y = 0.1
+X_RANGE = np.arange(LOWER_BOUND_X, UPPER_BOUND_X + STEP_SIZE_X, STEP_SIZE_X)
+Y_RANGE = np.arange(LOWER_BOUND_Y, UPPER_BOUND_Y + STEP_SIZE_Y, STEP_SIZE_Y)
+
 TOURNAMENT_SIZE = 2
 ELITES_SIZE = 1
 NUMBER_OF_GENERATIONS = 20
 POPULATION_SIZE = 500
-NUMBER_OF_SUB_MODELS = 3
+NUMBER_OF_SUB_MODELS = 2
 MAX_TREE_HEIGHT = 17
-MIN_TREE_INIT = 3
-MAX_TREE_INIT = 3
+MIN_TREE_INIT_HEIGHT = 3
+MAX_TREE_INIT_HEIGHT = 3
 
 
-def target_polynomial(x, y):
-    return 1 / y + x
-
+# TODO create csv exports
+#  some visualisation of generations
+#  create for example 1000 runs of each parameter setting and create a boxplot visualisation of the final averages
 
 class FirstLayer:
 
@@ -38,7 +43,7 @@ class FirstLayer:
         try:
             function = gp.compile(expr=individual, pset=self.pset)
             x_values = X_RANGE
-            y_values = X_RANGE
+            y_values = Y_RANGE
             errors = []
             for x in x_values:
                 for y in y_values:
@@ -58,7 +63,7 @@ class FirstLayer:
         creator.create("FitnessMin", base.Fitness, weights=(-1.0,))
         creator.create("Individual", gp.PrimitiveTree, fitness=creator.FitnessMin, pset=self.pset)
         self.toolbox = base.Toolbox()
-        self.toolbox.register("expr", gp.genGrow, pset=self.pset, min_=MIN_TREE_INIT, max_=MAX_TREE_INIT)
+        self.toolbox.register("expr", gp.genGrow, pset=self.pset, min_=MIN_TREE_INIT_HEIGHT, max_=MAX_TREE_INIT_HEIGHT)
         self.toolbox.register("individual", tools.initIterate, creator.Individual, self.toolbox.expr)
 
         self.toolbox.register("population", tools.initRepeat, list, self.toolbox.individual)
@@ -110,12 +115,13 @@ if __name__ == "__main__":
     try:
         manager = multiprocessing.Manager()
         new_terminals = manager.list()
-        gpInitializer = GpInitializer()
-        gpInitializer.initialize_gp_run()
-        first_layer_instance = FirstLayer(gpInitializer.pset)
+        gp_first_layer_initializer = GpFirstLayerInitializer()
+        gp_first_layer_initializer.initialize_gp_run()
+        first_layer_instance = FirstLayer(gp_first_layer_initializer.pset)
         with concurrent.futures.ProcessPoolExecutor() as executor:
 
-            futures = [executor.submit(first_layer_instance.first_layer_evolution, process_id, new_terminals) for process_id
+            futures = [executor.submit(first_layer_instance.first_layer_evolution, process_id, new_terminals) for
+                       process_id
                        in
                        range(NUMBER_OF_SUB_MODELS)]
 
@@ -131,10 +137,14 @@ if __name__ == "__main__":
             if best_fitness > terminal.fitness.values[0]:
                 best_fitness = terminal.fitness.values[0]
                 best_individual = terminal
+
         print("Best fitness from first run: " + str(best_fitness))
         print("---------Second run---------")
-        secondLayer = SecondLayer(terminal_map, gpInitializer.pset)
-        secondLayer.execute_run()
+
+        gp_second_layer_initializer = GpSecondLayerInitializer(terminal_map)
+        gp_second_layer_initializer.initialize_gp_run()
+        second_layer = SecondLayer(gp_first_layer_initializer.pset, gp_second_layer_initializer.pset)
+        second_layer.execute_run()
     except:
         traceback.print_exc()
 

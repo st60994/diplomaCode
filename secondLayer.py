@@ -1,69 +1,34 @@
-import operator
 import numpy as np
 from deap import gp, creator, base, tools, algorithms
 
 from customLogic import koza_custom_two_point_crossover
-from methodDefinitions import protectedAdd, sqrt, pow2, pow3
+from gpInitialization import target_polynomial
 from util import draw_individual
 
 
-def target_polynomial(x, y):
-    return 1 / y + x
-
-
 class SecondLayer:
-    LOWER_BOUND = 0.1
-    UPPER_BOUND = 15.0
-    STEP_SIZE = 0.1
-    X_RANGE = np.arange(LOWER_BOUND, UPPER_BOUND + STEP_SIZE, STEP_SIZE)
+    LOWER_BOUND_X = 0.1
+    UPPER_BOUND_X = 15.0
+    LOWER_BOUND_Y = 0.1
+    UPPER_BOUND_Y = 15.0
+    STEP_SIZE_X = 0.1
+    STEP_SIZE_Y = 0.1
+    X_RANGE = np.arange(LOWER_BOUND_X, UPPER_BOUND_X + STEP_SIZE_X, STEP_SIZE_X)
+    Y_RANGE = np.arange(LOWER_BOUND_Y, UPPER_BOUND_Y + STEP_SIZE_Y, STEP_SIZE_Y)
     TOURNAMENT_SIZE = 2
     ELITES_SIZE = 1
     NUMBER_OF_GENERATIONS = 30
     POPULATION_SIZE = 50
     MAX_TREE_HEIGHT = 65
-    MIN_TREE_INIT = 3
-    MAX_TREE_INIT = 3
+    MIN_TREE_INIT_HEIGHT = 3
+    MAX_TREE_INIT_HEIGHT = 3
 
-    subsets = []
     pset = None
-    first_layer_data = None
-    terminal_values = {}
     first_layer_pset = None
 
-    def __init__(self, subsets, first_layer_pset):
-        self.subsets = subsets
+    def __init__(self, first_layer_pset, second_layer_pset):
         self.first_layer_pset = first_layer_pset
-
-    def __add_primitive_set(self, pset):
-        pset.addPrimitive(operator.mul, 2)
-        pset.addPrimitive(protectedAdd, 2)
-        pset.addPrimitive(operator.sub, 2)
-        pset.addPrimitive(sqrt, 1)
-        # pset.addPrimitive(sin, 1)
-        pset.addPrimitive(pow2, 1)
-        pset.addPrimitive(pow3, 1)
-        #   pset.addPrimitive(avg, 1)
-        return pset
-
-    def __create_terminal_set(self, pset):
-
-        pset.addTerminal(-1.0)
-        pset.addTerminal(1.0)
-        pset.addTerminal(2.0)
-        pset.addTerminal(3.0)
-        for individual in self.subsets:
-            present = False
-            for terminal_list in pset.terminals.values():
-                for terminal in terminal_list:
-                    if individual == terminal.name:
-                        present = True
-                        break
-            if not present:
-                pset.addTerminal(self.subsets[individual], name=str(individual))
-        print("Primitive Set Terminals:", pset.terminals)
-        pset.renameArguments(ARG0="x")
-        pset.renameArguments(ARG1="y")
-        return pset
+        self.pset = second_layer_pset
 
     # Define the fitness measure
     def __evaluate_individual(self, individual):
@@ -85,19 +50,16 @@ class SecondLayer:
             return float('inf'),  # Return a high fitness in case of an error
 
     def __prepare_run(self):
-        self.pset = gp.PrimitiveSet("MAIN", 2)  # 2 input variables
-        self.pset = self.__create_terminal_set(self.pset)
-        self.pset = self.__add_primitive_set(self.pset)
-
-        creator.create("FitnessMin", base.Fitness, weights=(-1.0,))
-        creator.create("Individual", gp.PrimitiveTree, fitness=creator.FitnessMin, pset=self.pset)
+        # creator.create("FitnessMin", base.Fitness, weights=(-1.0,))
+        creator.create("Individual2", gp.PrimitiveTree, fitness=creator.FitnessMin, pset=self.pset)
 
         toolbox = base.Toolbox()
-        toolbox.register("expr", gp.genGrow, pset=self.pset, min_=self.MIN_TREE_INIT, max_=self.MAX_TREE_INIT)
-        toolbox.register("individual", tools.initIterate, creator.Individual, toolbox.expr)
+        toolbox.register("expr", gp.genGrow, pset=self.pset, min_=self.MIN_TREE_INIT_HEIGHT,
+                         max_=self.MAX_TREE_INIT_HEIGHT)
+        toolbox.register("individual", tools.initIterate, creator.Individual2, toolbox.expr)
 
         toolbox.register("population", tools.initRepeat, list, toolbox.individual)
-        gp.staticLimit(operator.attrgetter('height'), max_value=self.MAX_TREE_HEIGHT) # TODO doesnt work either
+        # gp.staticLimit(operator.attrgetter('height'), max_value=self.MAX_TREE_HEIGHT) # TODO doesnt work either
         toolbox.register("evaluate", self.__evaluate_individual)
         toolbox.register("mate", koza_custom_two_point_crossover)
         toolbox.register("mutate", gp.mutNodeReplacement, pset=self.pset)

@@ -1,5 +1,5 @@
 import networkx as nx
-from deap import gp, creator
+from deap import gp
 from matplotlib import pyplot as plt
 
 
