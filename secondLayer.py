@@ -3,7 +3,6 @@ from deap import gp, creator, base, tools, algorithms
 
 from customLogic import koza_custom_two_point_crossover
 from gpInitialization import target_polynomial
-from util import draw_individual
 
 
 class SecondLayer:
@@ -22,6 +21,22 @@ class SecondLayer:
     MAX_TREE_HEIGHT = 65
     MIN_TREE_INIT_HEIGHT = 3
     MAX_TREE_INIT_HEIGHT = 3
+
+    second_layer_params = {
+        'TOURNAMENT_SIZE': TOURNAMENT_SIZE,
+        'ELITES_SIZE': ELITES_SIZE,
+        'NUMBER_OF_GENERATIONS': NUMBER_OF_GENERATIONS,
+        'POPULATION_SIZE': POPULATION_SIZE,
+        'MAX_TREE_HEIGHT': MAX_TREE_HEIGHT,
+        'MIN_TREE_INIT_HEIGHT': MIN_TREE_INIT_HEIGHT,
+        'MAX_TREE_INIT_HEIGHT': MAX_TREE_INIT_HEIGHT,
+        'LOWER_BOUND_X': LOWER_BOUND_X,
+        'UPPER_BOUND_X': UPPER_BOUND_X,
+        'LOWER_BOUND_Y': LOWER_BOUND_Y,
+        'UPPER_BOUND_Y': UPPER_BOUND_Y,
+        'STEP_SIZE_X': STEP_SIZE_X,
+        'STEP_SIZE_Y': STEP_SIZE_Y,
+    }
 
     pset = None
     first_layer_pset = None
@@ -75,8 +90,8 @@ class SecondLayer:
             best_current_individual = tools.selBest(population, k=1)[0]
             fitness_values.append(best_current_individual.fitness.values[0])
             print(f"Best individual: {best_current_individual}, Fitness: {best_current_individual.fitness.values[0]}")
-            draw_individual(best_current_individual, self.first_layer_pset)
+            return best_current_individual
 
     def execute_run(self):
         toolbox = self.__prepare_run()
-        self.__second_layer_evolution(toolbox)
+        return self.__second_layer_evolution(toolbox)

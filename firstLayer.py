@@ -1,10 +1,12 @@
 import concurrent.futures
+import random
 
 import numpy as np
 from deap import algorithms, base, creator, tools, gp
 import traceback
 import multiprocessing
 
+from csvExport import CsvExporter
 from customLogic import koza_custom_two_point_crossover
 from gpInitialization import GpFirstLayerInitializer, GpSecondLayerInitializer, target_polynomial
 from secondLayer import SecondLayer
@@ -17,15 +19,34 @@ STEP_SIZE_X = 0.1
 STEP_SIZE_Y = 0.1
 X_RANGE = np.arange(LOWER_BOUND_X, UPPER_BOUND_X + STEP_SIZE_X, STEP_SIZE_X)
 Y_RANGE = np.arange(LOWER_BOUND_Y, UPPER_BOUND_Y + STEP_SIZE_Y, STEP_SIZE_Y)
+BOOTSTRAPPING_PERCENTAGE = 60
 
 TOURNAMENT_SIZE = 2
 ELITES_SIZE = 1
 NUMBER_OF_GENERATIONS = 20
-POPULATION_SIZE = 500
+POPULATION_SIZE = 100
 NUMBER_OF_SUB_MODELS = 2
 MAX_TREE_HEIGHT = 17
 MIN_TREE_INIT_HEIGHT = 3
 MAX_TREE_INIT_HEIGHT = 3
+
+first_layer_params = {
+    'TOURNAMENT_SIZE': TOURNAMENT_SIZE,
+    'ELITES_SIZE': ELITES_SIZE,
+    'NUMBER_OF_GENERATIONS': NUMBER_OF_GENERATIONS,
+    'POPULATION_SIZE': POPULATION_SIZE,
+    'NUMBER_OF_SUB_MODELS': NUMBER_OF_SUB_MODELS,
+    'MAX_TREE_HEIGHT': MAX_TREE_HEIGHT,
+    'MIN_TREE_INIT_HEIGHT': MIN_TREE_INIT_HEIGHT,
+    'MAX_TREE_INIT_HEIGHT': MAX_TREE_INIT_HEIGHT,
+    'LOWER_BOUND_X': LOWER_BOUND_X,
+    'UPPER_BOUND_X': UPPER_BOUND_X,
+    'LOWER_BOUND_Y': LOWER_BOUND_Y,
+    'UPPER_BOUND_Y': UPPER_BOUND_Y,
+    'STEP_SIZE_X': STEP_SIZE_X,
+    'STEP_SIZE_Y': STEP_SIZE_Y,
+    'BOOTSTRAPPING_PERCENTAGE': BOOTSTRAPPING_PERCENTAGE
+}
 
 
 # TODO create csv exports
@@ -34,22 +55,28 @@ MAX_TREE_INIT_HEIGHT = 3
 
 class FirstLayer:
 
-    def __init__(self, pset):
+    def __init__(self, pset, grid_points):
         self.pset = pset
         self.toolbox = None
+        self.grid_points = self.__get_points_for_run(grid_points)
+
+    def __get_points_for_run(self, new_grid_points):
+        # retrieve a certain percentage of points from the original set based on BOOTSTRAPPING_PERCENTAGE
+        amount_of_points = round(len(new_grid_points) * (BOOTSTRAPPING_PERCENTAGE / 100))
+        indices = np.arange(len(new_grid_points))
+        selected_indices = np.random.choice(indices, size=amount_of_points, replace=False)
+        return new_grid_points[selected_indices]
 
     # Define the fitness measure
     def __evaluate_individual(self, individual):
         try:
             function = gp.compile(expr=individual, pset=self.pset)
-            x_values = X_RANGE
-            y_values = Y_RANGE
             errors = []
-            for x in x_values:
-                for y in y_values:
-                    individual_output = function(x, y)
-                    error = abs(target_polynomial(x, y) - individual_output)
-                    errors.append(error)
+            for point in self.grid_points:
+                x, y = point
+                individual_output = function(x, y)
+                error = abs(target_polynomial(x, y) - individual_output)
+                errors.append(error)
             total_error = sum(errors)
             return total_error,
         except Exception as e:
@@ -117,7 +144,9 @@ if __name__ == "__main__":
         new_terminals = manager.list()
         gp_first_layer_initializer = GpFirstLayerInitializer()
         gp_first_layer_initializer.initialize_gp_run()
-        first_layer_instance = FirstLayer(gp_first_layer_initializer.pset)
+        X, Y = np.meshgrid(X_RANGE, Y_RANGE)
+        grid_points = np.column_stack((X.flatten(), Y.flatten()))
+        first_layer_instance = FirstLayer(gp_first_layer_initializer.pset, grid_points)
         with concurrent.futures.ProcessPoolExecutor() as executor:
 
             futures = [executor.submit(first_layer_instance.first_layer_evolution, process_id, new_terminals) for
@@ -144,7 +173,9 @@ if __name__ == "__main__":
         gp_second_layer_initializer = GpSecondLayerInitializer(terminal_map)
         gp_second_layer_initializer.initialize_gp_run()
         second_layer = SecondLayer(gp_first_layer_initializer.pset, gp_second_layer_initializer.pset)
-        second_layer.execute_run()
+        best_overall_individual = second_layer.execute_run()
+        csvExporter = CsvExporter(first_layer_params, second_layer.second_layer_params, best_overall_individual)
+        csvExporter.export_run_data_to_csv()
     except:
         traceback.print_exc()
 
