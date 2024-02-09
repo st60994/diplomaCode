@@ -1,6 +1,8 @@
 import os
+import traceback
 from datetime import datetime
 import csv
+from pathlib import Path
 
 
 class CsvExporter:
@@ -12,14 +14,18 @@ class CsvExporter:
 
     def export_run_data_to_csv(self):
         now = datetime.now()
-        folder_name = now.strftime("%Y_%m_%d__%H_%M_%S")
+        project_path = Path(__file__).parent
+        folder_name_date = now.strftime("%Y_%m_%d")
+        folder_name_time = now.strftime("%H_%M_%S")
+        folder_name = project_path / 'data' / folder_name_date / folder_name_time
+        print("Folder name {}", folder_name)
         self.__create_a_folder(folder_name)
         self.__save_first_layer_params_to_csv(folder_name)
         self.__save_second_layer_params_to_csv(folder_name)
         self.__save_best_individual(folder_name)
 
     def __save_first_layer_params_to_csv(self, folder_name):
-        file_path = os.path.join('data', folder_name, 'first_layer_params.csv')
+        file_path = os.path.join(folder_name, 'first_layer_params.csv')
         with open(file_path, 'w', newline='') as file:
             writer = csv.writer(file, delimiter=';')
             writer.writerow(['Parameter', 'Value'])
@@ -27,7 +33,7 @@ class CsvExporter:
                 writer.writerow([key, value])
 
     def __save_second_layer_params_to_csv(self, folder_name):
-        file_path = os.path.join('data', folder_name, 'second_layer_params.csv')
+        file_path = os.path.join(folder_name, 'second_layer_params.csv')
         with open(file_path, 'w', newline='') as file:
             writer = csv.writer(file, delimiter=';')
             writer.writerow(['Parameter', 'Value'])
@@ -35,13 +41,15 @@ class CsvExporter:
                 writer.writerow([key, value])
 
     def __save_best_individual(self, folder_name):
-        file_path = os.path.join('data', folder_name, 'best_individual.csv')
+        file_path = os.path.join(folder_name, 'best_individual.csv')
         with open(file_path, 'w', newline='') as file:
             writer = csv.writer(file, delimiter=';')
             writer.writerow(['Individual', 'Fitness'])
             writer.writerow([self.best_individual, self.best_individual.fitness.values[0]])
 
-    def __create_a_folder(self, folder_name):
-        project_path = os.path.dirname(__file__)
-        folder_path = os.path.join(project_path, 'data', folder_name)
-        os.makedirs(folder_path)
+    @staticmethod
+    def __create_a_folder(folder_name):
+        try:
+            Path(folder_name).mkdir(parents=True, exist_ok=True)
+        except FileExistsError:
+            traceback.print_exc()
