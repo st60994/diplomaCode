@@ -1,5 +1,5 @@
 import concurrent.futures
-import random
+from datetime import datetime
 
 import numpy as np
 from deap import algorithms, base, creator, tools, gp
@@ -11,10 +11,10 @@ from customLogic import koza_custom_two_point_crossover
 from gpInitialization import GpFirstLayerInitializer, GpSecondLayerInitializer, target_polynomial
 from secondLayer import SecondLayer
 
-LOWER_BOUND_X = 0.1
-UPPER_BOUND_X = 15
-LOWER_BOUND_Y = 0.1
-UPPER_BOUND_Y = 15
+LOWER_BOUND_X = -10.0
+UPPER_BOUND_X = 10.0
+LOWER_BOUND_Y = -5.0
+UPPER_BOUND_Y = 5.0
 STEP_SIZE_X = 0.1
 STEP_SIZE_Y = 0.1
 X_RANGE = np.arange(LOWER_BOUND_X, UPPER_BOUND_X + STEP_SIZE_X, STEP_SIZE_X)
@@ -23,12 +23,15 @@ BOOTSTRAPPING_PERCENTAGE = 60
 
 TOURNAMENT_SIZE = 2
 ELITES_SIZE = 1
-NUMBER_OF_GENERATIONS = 20
-POPULATION_SIZE = 100
+NUMBER_OF_GENERATIONS = 200
+POPULATION_SIZE = 50
 NUMBER_OF_SUB_MODELS = 1
 MAX_TREE_HEIGHT = 17
 MIN_TREE_INIT_HEIGHT = 3
-MAX_TREE_INIT_HEIGHT = 3
+MAX_TREE_INIT_HEIGHT = 5
+TERMINALS_FROM_FIRST_LAYER = 1
+
+NUMBER_OF_RUNS = 2
 
 first_layer_params = {
     'TOURNAMENT_SIZE': TOURNAMENT_SIZE,
@@ -45,20 +48,22 @@ first_layer_params = {
     'UPPER_BOUND_Y': UPPER_BOUND_Y,
     'STEP_SIZE_X': STEP_SIZE_X,
     'STEP_SIZE_Y': STEP_SIZE_Y,
-    'BOOTSTRAPPING_PERCENTAGE': BOOTSTRAPPING_PERCENTAGE
+    'BOOTSTRAPPING_PERCENTAGE': BOOTSTRAPPING_PERCENTAGE,
+    'TERMINALS_FROM_FIRST_LAYER': TERMINALS_FROM_FIRST_LAYER
 }
 
 
-# TODO create csv exports
+# TODO adding another genetic operation that trims the trees after mutation and mating
 #  some visualisation of generations
 #  create for example 1000 runs of each parameter setting and create a boxplot visualisation of the final averages
 
 class FirstLayer:
 
-    def __init__(self, pset, grid_points):
+    def __init__(self, pset, grid_points, csv_exporter):
         self.pset = pset
         self.toolbox = None
         self.grid_points = self.__get_points_for_run(grid_points)
+        self.csv_exporter: CsvExporter = csv_exporter
 
     def __get_points_for_run(self, new_grid_points):
         # retrieve a certain percentage of points from the original set based on BOOTSTRAPPING_PERCENTAGE
@@ -82,9 +87,6 @@ class FirstLayer:
         except Exception as e:
             print(f"Error during evaluation: {e}")
             return float('inf'),  # Return a high fitness in case of an error
-
-    # self.toolbox.decorate("mate", gp.staticLimit(key=operator.attrgetter("height"), max_value=MAX_TREE_HEIGHT)) TODO doesnt work => produce an exception when trying to get tree height using a stack
-    # self.toolbox.decorate("mutate", gp.staticLimit(key=operator.attrgetter("height"), max_value=MAX_TREE_HEIGHT))
 
     def __initialize_toolbox(self):
         creator.create("FitnessMin", base.Fitness, weights=(-1.0,))
@@ -127,11 +129,16 @@ class FirstLayer:
 
                 # Replace the current population by the offspring
                 population[:] = offspring
+                if process_id == 0:  # Only save the for process_id = 0 to avoid unnecessary delays
+                    self.csv_exporter.save_best_individual_for_each_generation(tools.selBest(population, k=1)[0], index)
                 combined_population += population
             except:
                 print("Exception in first layer generation loop")
                 traceback.print_exc()
-        new_terminal_list += population
+        if TERMINALS_FROM_FIRST_LAYER == 1:
+            new_terminal_list.append(tools.selBest(population, k=1)[0])
+        else:
+            new_terminal_list += population
         if len(population) != 0:
             best_current_individual = tools.selBest(population, k=1)[0]
             fitness_values.append(best_current_individual.fitness.values[0])
@@ -140,42 +147,47 @@ class FirstLayer:
 
 if __name__ == "__main__":
     try:
+        now = datetime.now()
+        csvExporter = CsvExporter(now)
         manager = multiprocessing.Manager()
-        new_terminals = manager.list()
         gp_first_layer_initializer = GpFirstLayerInitializer()
         gp_first_layer_initializer.initialize_gp_run()
         X, Y = np.meshgrid(X_RANGE, Y_RANGE)
         grid_points = np.column_stack((X.flatten(), Y.flatten()))
-        first_layer_instance = FirstLayer(gp_first_layer_initializer.pset, grid_points)
-        with concurrent.futures.ProcessPoolExecutor() as executor:
+        for run_number in range(NUMBER_OF_RUNS):
+            print("Starting run " + str(run_number))
+            new_terminals = manager.list()
+            first_layer_instance = FirstLayer(gp_first_layer_initializer.pset, grid_points, csvExporter)
+            with concurrent.futures.ProcessPoolExecutor() as executor:
 
-            futures = [executor.submit(first_layer_instance.first_layer_evolution, process_id, new_terminals) for
-                       process_id
-                       in
-                       range(NUMBER_OF_SUB_MODELS)]
+                futures = [executor.submit(first_layer_instance.first_layer_evolution, process_id, new_terminals) for
+                           process_id
+                           in
+                           range(NUMBER_OF_SUB_MODELS)]
 
-            concurrent.futures.wait(futures)
+                concurrent.futures.wait(futures)
+            csvExporter.save_sub_models(new_terminals, run_number)
+            functions = []
+            terminal_map = {}
+            best_fitness = float("inf")
+            best_individual = None
+            for i, terminal in enumerate(new_terminals):
+                terminal_name = f'{terminal}'
+                terminal_map[terminal_name] = terminal
+                if best_fitness > terminal.fitness.values[0]:
+                    best_fitness = terminal.fitness.values[0]
+                    best_individual = terminal
 
-        functions = []
-        terminal_map = {}
-        best_fitness = float("inf")
-        best_individual = None
-        for i, terminal in enumerate(new_terminals):
-            terminal_name = f'{terminal}'
-            terminal_map[terminal_name] = terminal
-            if best_fitness > terminal.fitness.values[0]:
-                best_fitness = terminal.fitness.values[0]
-                best_individual = terminal
+            print("Best fitness from first layer: " + str(best_fitness))
+            print("---------Second layer---------")
 
-        print("Best fitness from first run: " + str(best_fitness))
-        print("---------Second run---------")
-
-        gp_second_layer_initializer = GpSecondLayerInitializer(terminal_map)
-        gp_second_layer_initializer.initialize_gp_run()
-        second_layer = SecondLayer(gp_first_layer_initializer.pset, gp_second_layer_initializer.pset)
-        best_overall_individual = second_layer.execute_run()
-        csvExporter = CsvExporter(first_layer_params, second_layer.second_layer_params, best_overall_individual)
-        csvExporter.export_run_data_to_csv()
+            gp_second_layer_initializer = GpSecondLayerInitializer(terminal_map)
+            gp_second_layer_initializer.initialize_gp_run()
+            second_layer = SecondLayer(gp_first_layer_initializer.pset, gp_second_layer_initializer.pset)
+            if run_number == 0:
+                csvExporter.export_run_params_to_csv(first_layer_params, second_layer.second_layer_params)
+            best_overall_individual = second_layer.execute_run()
+            csvExporter.save_best_individual(best_overall_individual, run_number)
     except:
         traceback.print_exc()
 

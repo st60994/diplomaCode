@@ -6,10 +6,10 @@ from gpInitialization import target_polynomial
 
 
 class SecondLayer:
-    LOWER_BOUND_X = 0.1
-    UPPER_BOUND_X = 15.0
-    LOWER_BOUND_Y = 0.1
-    UPPER_BOUND_Y = 15.0
+    LOWER_BOUND_X = -10.0
+    UPPER_BOUND_X = 10.0
+    LOWER_BOUND_Y = -5.0
+    UPPER_BOUND_Y = 5.0
     STEP_SIZE_X = 0.1
     STEP_SIZE_Y = 0.1
     X_RANGE = np.arange(LOWER_BOUND_X, UPPER_BOUND_X + STEP_SIZE_X, STEP_SIZE_X)
