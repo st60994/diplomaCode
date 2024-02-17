@@ -17,7 +17,7 @@ class SecondLayer:
     TOURNAMENT_SIZE = 2
     ELITES_SIZE = 1
     NUMBER_OF_GENERATIONS = 30
-    POPULATION_SIZE = 50
+    POPULATION_SIZE = 500
     MAX_TREE_HEIGHT = 65
     MIN_TREE_INIT_HEIGHT = 3
     MAX_TREE_INIT_HEIGHT = 3
@@ -64,6 +64,24 @@ class SecondLayer:
             print(f"Error during evaluation: {e}")
             return float('inf'),  # Return a high fitness in case of an error
 
+    def __evaluate_individual_mse(self, individual):
+        try:
+            compiled_individual = gp.compile(expr=individual, pset=self.pset)
+
+            x_values = self.X_RANGE
+            y_values = self.X_RANGE
+            errors = []
+            for x in x_values:
+                for y in y_values:
+                    individual_output = compiled_individual(x, y)
+                    error = pow(target_polynomial(x, y) - individual_output, 2)
+                    errors.append(error)
+            total_error = sum(errors) / len(errors)
+            return total_error,
+        except Exception as e:
+            print(f"Error during evaluation: {e}")
+            return float('inf'),  # Return a high fitness in case of an error
+
     def __prepare_run(self):
         # creator.create("FitnessMin", base.Fitness, weights=(-1.0,))
         creator.create("Individual2", gp.PrimitiveTree, fitness=creator.FitnessMin, pset=self.pset)
@@ -75,7 +93,7 @@ class SecondLayer:
 
         toolbox.register("population", tools.initRepeat, list, toolbox.individual)
         # gp.staticLimit(operator.attrgetter('height'), max_value=self.MAX_TREE_HEIGHT) # TODO doesnt work either
-        toolbox.register("evaluate", self.__evaluate_individual)
+        toolbox.register("evaluate", self.__evaluate_individual_mse)
         toolbox.register("mate", koza_custom_two_point_crossover)
         toolbox.register("mutate", gp.mutNodeReplacement, pset=self.pset)
         toolbox.register("select", tools.selTournament, tournsize=self.TOURNAMENT_SIZE)
@@ -85,7 +103,7 @@ class SecondLayer:
         fitness_values = []
         population = toolbox.population(n=self.POPULATION_SIZE)
         algorithms.eaSimple(population, toolbox, cxpb=0.9, mutpb=0.01, ngen=self.NUMBER_OF_GENERATIONS, stats=None,
-                            verbose=True)
+                            verbose=False)
         if len(population) != 0:
             best_current_individual = tools.selBest(population, k=1)[0]
             fitness_values.append(best_current_individual.fitness.values[0])

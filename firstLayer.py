@@ -23,15 +23,15 @@ BOOTSTRAPPING_PERCENTAGE = 60
 
 TOURNAMENT_SIZE = 2
 ELITES_SIZE = 1
-NUMBER_OF_GENERATIONS = 200
-POPULATION_SIZE = 50
-NUMBER_OF_SUB_MODELS = 1
+NUMBER_OF_GENERATIONS = 30
+POPULATION_SIZE = 500
+NUMBER_OF_SUB_MODELS = 30
 MAX_TREE_HEIGHT = 17
 MIN_TREE_INIT_HEIGHT = 3
 MAX_TREE_INIT_HEIGHT = 5
 TERMINALS_FROM_FIRST_LAYER = 1
 
-NUMBER_OF_RUNS = 2
+NUMBER_OF_RUNS = 10
 
 first_layer_params = {
     'TOURNAMENT_SIZE': TOURNAMENT_SIZE,
@@ -88,6 +88,21 @@ class FirstLayer:
             print(f"Error during evaluation: {e}")
             return float('inf'),  # Return a high fitness in case of an error
 
+    def __evaluate_individual_mse(self, individual):
+        try:
+            function = gp.compile(expr=individual, pset=self.pset)
+            errors = []
+            for point in self.grid_points:
+                x, y = point
+                individual_output = function(x, y)
+                error = pow(target_polynomial(x, y) - individual_output, 2)
+                errors.append(error)
+            total_error = sum(errors) / len(errors)
+            return total_error,
+        except Exception as e:
+            print(f"Error during evaluation: {e}")
+            return float('inf')
+
     def __initialize_toolbox(self):
         creator.create("FitnessMin", base.Fitness, weights=(-1.0,))
         creator.create("Individual", gp.PrimitiveTree, fitness=creator.FitnessMin, pset=self.pset)
@@ -98,7 +113,7 @@ class FirstLayer:
         self.toolbox.register("population", tools.initRepeat, list, self.toolbox.individual)
         self.toolbox.register("mate", koza_custom_two_point_crossover)
         self.toolbox.register("mutate", gp.mutNodeReplacement, pset=self.pset)
-        self.toolbox.register("evaluate", self.__evaluate_individual)
+        self.toolbox.register("evaluate", self.__evaluate_individual_mse)
         self.toolbox.register("select", tools.selTournament, tournsize=TOURNAMENT_SIZE)
 
     def first_layer_evolution(self, process_id, new_terminal_list):
