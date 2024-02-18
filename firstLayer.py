@@ -25,9 +25,9 @@ TOURNAMENT_SIZE = 2
 ELITES_SIZE = 1
 NUMBER_OF_GENERATIONS = 30
 POPULATION_SIZE = 500
-NUMBER_OF_SUB_MODELS = 30
-MAX_TREE_HEIGHT = 17
-MIN_TREE_INIT_HEIGHT = 3
+NUMBER_OF_SUB_MODELS = 1
+MAX_TREE_HEIGHT = 3
+MIN_TREE_INIT_HEIGHT = 2
 MAX_TREE_INIT_HEIGHT = 5
 TERMINALS_FROM_FIRST_LAYER = 1
 
@@ -103,6 +103,23 @@ class FirstLayer:
             print(f"Error during evaluation: {e}")
             return float('inf')
 
+    def __get_individual_height(self, individual):
+        stack = [0]
+        max_depth = 0
+        for elem in individual:
+            if stack:  # Check if stack is not empty before popping
+                depth = stack.pop()
+                max_depth = max(max_depth, depth)
+                stack.extend([depth + 1] * elem.arity)
+            else:
+                break  # Exit the loop if stack is empty
+        return max_depth
+
+    def __trim_individual(self, individual):
+        if self.__get_individual_height(individual) > MAX_TREE_HEIGHT:
+            return gp.PrimitiveTree(individual[:MAX_TREE_HEIGHT])
+        return individual
+
     def __initialize_toolbox(self):
         creator.create("FitnessMin", base.Fitness, weights=(-1.0,))
         creator.create("Individual", gp.PrimitiveTree, fitness=creator.FitnessMin, pset=self.pset)
@@ -115,6 +132,7 @@ class FirstLayer:
         self.toolbox.register("mutate", gp.mutNodeReplacement, pset=self.pset)
         self.toolbox.register("evaluate", self.__evaluate_individual_mse)
         self.toolbox.register("select", tools.selTournament, tournsize=TOURNAMENT_SIZE)
+        self.toolbox.register("trim", self.__trim_individual)
 
     def first_layer_evolution(self, process_id, new_terminal_list):
         try:
@@ -130,6 +148,8 @@ class FirstLayer:
                 print(str(process_id) + ": Generation " + str(index))
                 offspring = algorithms.varAnd(population, self.toolbox, cxpb=0.9,
                                               mutpb=0.01)  # perform only mutation + crossover
+                for individual in offspring:
+                    self.toolbox.trim(individual)
 
                 # Need to manually evaluate the offspring
                 fitnesses = self.toolbox.map(self.toolbox.evaluate, offspring)
