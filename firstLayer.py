@@ -7,31 +7,22 @@ import traceback
 import multiprocessing
 
 from csvExport import CsvExporter
-from customLogic import koza_custom_two_point_crossover
-from gpInitialization import GpFirstLayerInitializer, GpSecondLayerInitializer, target_polynomial
+from customLogic import koza_custom_two_point_crossover, trim_individual
+from gpInitialization import GpFirstLayerInitializer, GpSecondLayerInitializer, target_polynomial, LOWER_BOUND_X, \
+    UPPER_BOUND_X, LOWER_BOUND_Y, UPPER_BOUND_Y, STEP_SIZE_X, STEP_SIZE_Y, X_RANGE, Y_RANGE, NUMBER_OF_RUNS, \
+    MAX_TREE_HEIGHT
 from secondLayer import SecondLayer
 
-LOWER_BOUND_X = -10.0
-UPPER_BOUND_X = 10.0
-LOWER_BOUND_Y = -5.0
-UPPER_BOUND_Y = 5.0
-STEP_SIZE_X = 0.1
-STEP_SIZE_Y = 0.1
-X_RANGE = np.arange(LOWER_BOUND_X, UPPER_BOUND_X + STEP_SIZE_X, STEP_SIZE_X)
-Y_RANGE = np.arange(LOWER_BOUND_Y, UPPER_BOUND_Y + STEP_SIZE_Y, STEP_SIZE_Y)
 BOOTSTRAPPING_PERCENTAGE = 60
 
 TOURNAMENT_SIZE = 2
 ELITES_SIZE = 1
 NUMBER_OF_GENERATIONS = 30
-POPULATION_SIZE = 500
+POPULATION_SIZE = 100
 NUMBER_OF_SUB_MODELS = 1
-MAX_TREE_HEIGHT = 3
-MIN_TREE_INIT_HEIGHT = 2
+MIN_TREE_INIT_HEIGHT = 4
 MAX_TREE_INIT_HEIGHT = 5
 TERMINALS_FROM_FIRST_LAYER = 1
-
-NUMBER_OF_RUNS = 10
 
 first_layer_params = {
     'TOURNAMENT_SIZE': TOURNAMENT_SIZE,
@@ -103,23 +94,6 @@ class FirstLayer:
             print(f"Error during evaluation: {e}")
             return float('inf')
 
-    def __get_individual_height(self, individual):
-        stack = [0]
-        max_depth = 0
-        for elem in individual:
-            if stack:  # Check if stack is not empty before popping
-                depth = stack.pop()
-                max_depth = max(max_depth, depth)
-                stack.extend([depth + 1] * elem.arity)
-            else:
-                break  # Exit the loop if stack is empty
-        return max_depth
-
-    def __trim_individual(self, individual):
-        if self.__get_individual_height(individual) > MAX_TREE_HEIGHT:
-            return gp.PrimitiveTree(individual[:MAX_TREE_HEIGHT])
-        return individual
-
     def __initialize_toolbox(self):
         creator.create("FitnessMin", base.Fitness, weights=(-1.0,))
         creator.create("Individual", gp.PrimitiveTree, fitness=creator.FitnessMin, pset=self.pset)
@@ -132,7 +106,7 @@ class FirstLayer:
         self.toolbox.register("mutate", gp.mutNodeReplacement, pset=self.pset)
         self.toolbox.register("evaluate", self.__evaluate_individual_mse)
         self.toolbox.register("select", tools.selTournament, tournsize=TOURNAMENT_SIZE)
-        self.toolbox.register("trim", self.__trim_individual)
+        self.toolbox.register("trim", trim_individual)
 
     def first_layer_evolution(self, process_id, new_terminal_list):
         try:
@@ -178,6 +152,7 @@ class FirstLayer:
             best_current_individual = tools.selBest(population, k=1)[0]
             fitness_values.append(best_current_individual.fitness.values[0])
             print(f"Best individual: {best_current_individual}, Fitness: {best_current_individual.fitness.values[0]}")
+            return best_current_individual
 
 
 if __name__ == "__main__":

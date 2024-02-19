@@ -1,24 +1,15 @@
 import numpy as np
 from deap import gp, creator, base, tools, algorithms
 
-from customLogic import koza_custom_two_point_crossover
-from gpInitialization import target_polynomial
+from customLogic import koza_custom_two_point_crossover, trim_individual
+from gpInitialization import target_polynomial, X_RANGE, Y_RANGE, MAX_TREE_HEIGHT
 
 
 class SecondLayer:
-    LOWER_BOUND_X = -10.0
-    UPPER_BOUND_X = 10.0
-    LOWER_BOUND_Y = -5.0
-    UPPER_BOUND_Y = 5.0
-    STEP_SIZE_X = 0.1
-    STEP_SIZE_Y = 0.1
-    X_RANGE = np.arange(LOWER_BOUND_X, UPPER_BOUND_X + STEP_SIZE_X, STEP_SIZE_X)
-    Y_RANGE = np.arange(LOWER_BOUND_Y, UPPER_BOUND_Y + STEP_SIZE_Y, STEP_SIZE_Y)
     TOURNAMENT_SIZE = 2
     ELITES_SIZE = 1
     NUMBER_OF_GENERATIONS = 30
-    POPULATION_SIZE = 500
-    MAX_TREE_HEIGHT = 65
+    POPULATION_SIZE = 100
     MIN_TREE_INIT_HEIGHT = 3
     MAX_TREE_INIT_HEIGHT = 3
 
@@ -30,12 +21,6 @@ class SecondLayer:
         'MAX_TREE_HEIGHT': MAX_TREE_HEIGHT,
         'MIN_TREE_INIT_HEIGHT': MIN_TREE_INIT_HEIGHT,
         'MAX_TREE_INIT_HEIGHT': MAX_TREE_INIT_HEIGHT,
-        'LOWER_BOUND_X': LOWER_BOUND_X,
-        'UPPER_BOUND_X': UPPER_BOUND_X,
-        'LOWER_BOUND_Y': LOWER_BOUND_Y,
-        'UPPER_BOUND_Y': UPPER_BOUND_Y,
-        'STEP_SIZE_X': STEP_SIZE_X,
-        'STEP_SIZE_Y': STEP_SIZE_Y,
     }
 
     pset = None
@@ -50,8 +35,8 @@ class SecondLayer:
         try:
             compiled_individual = gp.compile(expr=individual, pset=self.pset)
 
-            x_values = self.X_RANGE
-            y_values = self.X_RANGE
+            x_values = X_RANGE
+            y_values = Y_RANGE
             errors = []
             for x in x_values:
                 for y in y_values:
@@ -95,7 +80,7 @@ class SecondLayer:
         # gp.staticLimit(operator.attrgetter('height'), max_value=self.MAX_TREE_HEIGHT) # TODO doesnt work either
         toolbox.register("evaluate", self.__evaluate_individual_mse)
         toolbox.register("mate", koza_custom_two_point_crossover)
-        toolbox.register("trim")
+        toolbox.register("trim", trim_individual)
         toolbox.register("mutate", gp.mutNodeReplacement, pset=self.pset)
         toolbox.register("select", tools.selTournament, tournsize=self.TOURNAMENT_SIZE)
         return toolbox

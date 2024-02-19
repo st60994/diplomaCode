@@ -1,7 +1,9 @@
 import random
 
 import deap
-from deap import creator
+from deap import creator, gp
+
+from gpInitialization import MAX_TREE_HEIGHT
 
 
 def koza_custom_two_point_crossover(parent1, parent2):
@@ -31,3 +33,22 @@ def koza_custom_two_point_crossover(parent1, parent2):
     combined_tree1 = parent1[:crossing_index_parent1] + parent2[crossing_index_parent2:]
     combined_tree2 = parent2[:crossing_index_parent2] + parent1[crossing_index_parent1:]
     return creator.Individual(combined_tree1), creator.Individual(combined_tree2)
+
+
+def get_individual_height(individual):
+    stack = [0]
+    max_depth = 0
+    for elem in individual:
+        if stack:  # Check if stack is not empty before popping
+            depth = stack.pop()
+            max_depth = max(max_depth, depth)
+            stack.extend([depth + 1] * elem.arity)
+        else:
+            break  # Exit the loop if stack is empty
+    return max_depth
+
+
+def trim_individual(individual):
+    if get_individual_height(individual) > MAX_TREE_HEIGHT:
+        return gp.PrimitiveTree(individual[:MAX_TREE_HEIGHT])
+    return individual
