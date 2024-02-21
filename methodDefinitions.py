@@ -31,5 +31,24 @@ def pow2(x):
 def pow3(x):
     return x * x * x
 
+
+def custom_and(x, y):
+    return x and y
+
+
+def custom_or(x, y):
+    return x or y
+
+
+def custom_not(x):
+    return not x
+
+
+def custom_if(x, y, z):
+    if x:
+        return y
+    else:
+        return z
+
 # def avg(x):
 #     return round(x, 0)
