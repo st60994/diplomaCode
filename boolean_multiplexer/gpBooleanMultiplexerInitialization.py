@@ -23,17 +23,17 @@ class GpFirstLayerMUXInitializer:
         self.pset.addPrimitive(custom_if, 3)
 
     def __create_terminal_set(self):
-        self.pset.renameArguments(ARG0="A0")
+        self.pset.renameArguments(ARG0="A2")
         self.pset.renameArguments(ARG1="A1")
-        self.pset.renameArguments(ARG2="A2")
-        self.pset.renameArguments(ARG3="D0")
-        self.pset.renameArguments(ARG4="D1")
-        self.pset.renameArguments(ARG5="D2")
-        self.pset.renameArguments(ARG6="D3")
-        self.pset.renameArguments(ARG7="D4")
-        self.pset.renameArguments(ARG8="D5")
-        self.pset.renameArguments(ARG9="D6")
-        self.pset.renameArguments(ARG10="D7")
+        self.pset.renameArguments(ARG2="A0")
+        self.pset.renameArguments(ARG3="D7")
+        self.pset.renameArguments(ARG4="D6")
+        self.pset.renameArguments(ARG5="D5")
+        self.pset.renameArguments(ARG6="D4")
+        self.pset.renameArguments(ARG7="D3")
+        self.pset.renameArguments(ARG8="D2")
+        self.pset.renameArguments(ARG9="D1")
+        self.pset.renameArguments(ARG10="D0")
 
 
 class GpSecondLayerInitializer:

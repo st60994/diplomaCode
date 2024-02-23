@@ -61,7 +61,7 @@ class FirstLayer:
     def __get_expected_output(self, input_combination):
         address_string = input_combination[:3]
         address = int(address_string, 2)
-        return int(input_combination[3 + address])
+        return int(input_combination[10 - address])
 
     def __generate_all_possible_input_combination(self):
         all_combinations = []
