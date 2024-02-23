@@ -57,11 +57,21 @@ def trim_individual(individual):
 
 def koza_over_selection(individuals, k, tournsize, population_size):
     individuals = sorted(individuals, key=lambda x: x.fitness, reverse=True)
-    fittest_individuals_percentage = 32000 / population_size
+    fittest_individuals_percentage = (32000 / population_size) / 100
+    total_fitness_sum = 0
+    for individual in individuals:
+        if len(individual.fitness.values) > 0:
+            total_fitness_sum += individual.fitness.values[0]
 
-    top_count = int(fittest_individuals_percentage * population_size)
-    top_individuals = individuals[:top_count]
-    rest_individuals = individuals[top_count:]
+    cumulative_fitness = 0
+    top_individuals = []
+    for ind in individuals:
+        cumulative_fitness += ind.fitness.values[0]
+        if cumulative_fitness < fittest_individuals_percentage * total_fitness_sum:
+            top_individuals.append(ind)
+        else:
+            break
+    rest_individuals = individuals[len(top_individuals):]
 
     if random.uniform(0, 1) <= 0.8:
         return selection.selTournament(top_individuals, k, tournsize)
