@@ -104,7 +104,7 @@ class FirstLayer:
                 fitnesses = self.toolbox.map(self.toolbox.evaluate, offspring)
                 for ind, fit in zip(offspring, fitnesses):
                     ind.fitness.values = fit
-
+                print("Avg fitness: " + str(self.__calculate_avg_fitness(offspring)))
                 combined_population = population + offspring
 
                 # Implementation of elitism
@@ -128,6 +128,14 @@ class FirstLayer:
             fitness_values.append(best_current_individual.fitness.values[0])
             print(f"Best individual: {best_current_individual}, Fitness: {best_current_individual.fitness.values[0]}")
             return best_current_individual
+
+
+    def __calculate_avg_fitness(self, population):
+        total_fitness = 0
+        for individual in population:
+            fitness = individual.fitness.values[0]
+            total_fitness += fitness
+        return total_fitness / len(population)
 
 
 if __name__ == "__main__":
