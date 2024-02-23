@@ -7,7 +7,7 @@ import multiprocessing
 from boolean_multiplexer.gpBooleanMultiplexerInitialization import GpFirstLayerMUXInitializer, NUMBER_OF_RUNS, \
     MAX_TREE_HEIGHT
 from csvExport import CsvExporter
-from customLogic import koza_custom_two_point_crossover, trim_individual
+from customLogic import koza_custom_two_point_crossover, trim_individual, koza_over_selection
 from util import draw_individual
 
 BOOTSTRAPPING_PERCENTAGE = 60
@@ -80,7 +80,7 @@ class FirstLayer:
         self.toolbox.register("mate", koza_custom_two_point_crossover)
         self.toolbox.register("mutate", gp.mutNodeReplacement, pset=self.pset)
         self.toolbox.register("evaluate", self.__evaluate_individual)
-        self.toolbox.register("select", tools.selTournament, tournsize=TOURNAMENT_SIZE)
+        self.toolbox.register("select", koza_over_selection, tournsize=TOURNAMENT_SIZE, population_size=POPULATION_SIZE)
         self.toolbox.register("trim", trim_individual)
 
     def first_layer_evolution(self, process_id, new_terminal_list):
