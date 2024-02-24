@@ -8,7 +8,6 @@ from boolean_multiplexer.gpBooleanMultiplexerInitialization import GpFirstLayerM
     MAX_TREE_HEIGHT
 from csvExport import CsvExporter
 from customLogic import koza_custom_two_point_crossover, trim_individual, koza_over_selection
-from util import draw_individual
 
 BOOTSTRAPPING_PERCENTAGE = 60
 
@@ -83,7 +82,7 @@ class FirstLayer:
         self.toolbox.register("select", koza_over_selection, tournsize=TOURNAMENT_SIZE, population_size=POPULATION_SIZE)
         self.toolbox.register("trim", trim_individual)
 
-    def first_layer_evolution(self, process_id, new_terminal_list):
+    def first_layer_evolution(self, process_id, new_terminal_list, run_number):
         try:
             self.__initialize_toolbox()
             fitness_values = []
@@ -96,7 +95,7 @@ class FirstLayer:
             try:
                 print(str(process_id) + ": Generation " + str(index))
                 offspring = algorithms.varAnd(population, self.toolbox, cxpb=0.9,
-                                              mutpb=0.01)  # perform only mutation + crossover
+                                              mutpb=0.05)  # perform only mutation + crossover
                 for individual in offspring:
                     self.toolbox.trim(individual)
 
@@ -105,6 +104,7 @@ class FirstLayer:
                 for ind, fit in zip(offspring, fitnesses):
                     ind.fitness.values = fit
                 print("Avg fitness: " + str(self.__calculate_avg_fitness(offspring)))
+                self.csv_exporter.save_whole_population_for_each_generation(offspring, index, run_number)
                 combined_population = population + offspring
 
                 # Implementation of elitism
@@ -149,12 +149,13 @@ if __name__ == "__main__":
             print("Starting run " + str(run_number))
             new_terminals = manager.list()
             first_layer_instance = FirstLayer(gp_boolean_multiplexer_init.pset, csvExporter)
-            best_individual = first_layer_instance.first_layer_evolution(0, new_terminals)
+            best_individual = first_layer_instance.first_layer_evolution(0, new_terminals, run_number)
+            if run_number == 0:
+                csvExporter.export_run_params_to_csv(first_layer_params, {})
             csvExporter.save_sub_models(new_terminals, run_number)
             csvExporter.save_best_individual(best_individual, run_number)
             if best_individual.fitness.values[0] == 2048.0:
                 break
-            draw_individual(best_individual, first_layer_instance.pset)
     except:
         traceback.print_exc()
 

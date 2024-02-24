@@ -36,6 +36,17 @@ class CsvExporter:
                 writer.writerow(['Generation Number', 'Individual', 'Fitness'])
             writer.writerow([generation_number, best_individual, best_individual.fitness.values[0]])
 
+    def save_whole_population_for_each_generation(self, population, generation_number, run_number):
+        file_name = 'population' + str(generation_number) + '.csv'
+        folder_path = self.folder_name / str(run_number)
+        Path(folder_path).mkdir(parents=True, exist_ok=True)
+        file_path = folder_path / file_name
+        with open(file_path, 'a', newline='') as file:
+            writer = csv.writer(file, delimiter=';')
+            writer.writerow(['Individual', 'Fitness'])
+            for individual in population:
+                writer.writerow([individual, individual.fitness.values[0]])
+
     def save_sub_models(self, sub_models, run_number):
         folder_path = self.folder_name / 'sub_models'
         Path(folder_path).mkdir(parents=True, exist_ok=True)
