@@ -1,4 +1,3 @@
-import numpy as np
 from deap import gp, creator, base, tools, algorithms
 
 from customLogic import koza_custom_two_point_crossover, trim_individual
@@ -53,8 +52,8 @@ class SecondLayer:
         try:
             compiled_individual = gp.compile(expr=individual, pset=self.pset)
 
-            x_values = self.X_RANGE
-            y_values = self.X_RANGE
+            x_values = X_RANGE
+            y_values = Y_RANGE
             errors = []
             for x in x_values:
                 for y in y_values:
@@ -77,10 +76,9 @@ class SecondLayer:
         toolbox.register("individual", tools.initIterate, creator.Individual2, toolbox.expr)
 
         toolbox.register("population", tools.initRepeat, list, toolbox.individual)
-        # gp.staticLimit(operator.attrgetter('height'), max_value=self.MAX_TREE_HEIGHT) # TODO doesnt work either
         toolbox.register("evaluate", self.__evaluate_individual_mse)
         toolbox.register("mate", koza_custom_two_point_crossover)
-        toolbox.register("trim", trim_individual)
+        toolbox.register("trim", trim_individual, max_tree_height=MAX_TREE_HEIGHT)
         toolbox.register("mutate", gp.mutNodeReplacement, pset=self.pset)
         toolbox.register("select", tools.selTournament, tournsize=self.TOURNAMENT_SIZE)
         return toolbox

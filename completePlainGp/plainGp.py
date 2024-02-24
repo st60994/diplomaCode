@@ -4,8 +4,8 @@ import numpy as np
 from datetime import datetime
 
 from csvExport import CsvExporter
-from firstLayer import FirstLayer, first_layer_params
-from gpInitialization import GpFirstLayerInitializer, X_RANGE, Y_RANGE, NUMBER_OF_RUNS
+from functionApproximation.firstLayer import FirstLayer, first_layer_params
+from functionApproximation.gpInitialization import GpFirstLayerInitializer, X_RANGE, Y_RANGE, NUMBER_OF_RUNS
 
 if __name__ == "__main__":
     try:

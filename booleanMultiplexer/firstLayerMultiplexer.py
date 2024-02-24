@@ -1,27 +1,25 @@
 import concurrent.futures
 from datetime import datetime
 
-import numpy as np
 from deap import algorithms, base, creator, tools, gp
 import traceback
 import multiprocessing
 
+from booleanMultiplexer.gpBooleanMultiplexerInitialization import GpFirstLayerMUXInitializer, NUMBER_OF_RUNS, \
+    MAX_TREE_HEIGHT, GpSecondLayerInitializer
+from booleanMultiplexer.secondLayerMultiplexer import SecondLayerMultiplexer
 from csvExport import CsvExporter
-from customLogic import koza_custom_two_point_crossover, trim_individual
-from gpInitialization import GpFirstLayerInitializer, GpSecondLayerInitializer, target_polynomial, LOWER_BOUND_X, \
-    UPPER_BOUND_X, LOWER_BOUND_Y, UPPER_BOUND_Y, STEP_SIZE_X, STEP_SIZE_Y, X_RANGE, Y_RANGE, NUMBER_OF_RUNS, \
-    MAX_TREE_HEIGHT
-from secondLayer import SecondLayer
+from customLogic import koza_custom_two_point_crossover, trim_individual, koza_over_selection
 
 BOOTSTRAPPING_PERCENTAGE = 60
 
 TOURNAMENT_SIZE = 2
 ELITES_SIZE = 1
-NUMBER_OF_GENERATIONS = 30
-POPULATION_SIZE = 100
-NUMBER_OF_SUB_MODELS = 1
-MIN_TREE_INIT_HEIGHT = 4
-MAX_TREE_INIT_HEIGHT = 5
+NUMBER_OF_GENERATIONS = 2
+POPULATION_SIZE = 4000
+NUMBER_OF_SUB_MODELS = 8
+MIN_TREE_INIT_HEIGHT = 2
+MAX_TREE_INIT_HEIGHT = 6
 TERMINALS_FROM_FIRST_LAYER = 1
 
 first_layer_params = {
@@ -33,70 +31,49 @@ first_layer_params = {
     'MAX_TREE_HEIGHT': MAX_TREE_HEIGHT,
     'MIN_TREE_INIT_HEIGHT': MIN_TREE_INIT_HEIGHT,
     'MAX_TREE_INIT_HEIGHT': MAX_TREE_INIT_HEIGHT,
-    'LOWER_BOUND_X': LOWER_BOUND_X,
-    'UPPER_BOUND_X': UPPER_BOUND_X,
-    'LOWER_BOUND_Y': LOWER_BOUND_Y,
-    'UPPER_BOUND_Y': UPPER_BOUND_Y,
-    'STEP_SIZE_X': STEP_SIZE_X,
-    'STEP_SIZE_Y': STEP_SIZE_Y,
     'BOOTSTRAPPING_PERCENTAGE': BOOTSTRAPPING_PERCENTAGE,
     'TERMINALS_FROM_FIRST_LAYER': TERMINALS_FROM_FIRST_LAYER
 }
 
 
-# TODO adding another genetic operation that trims the trees after mutation and mating
-#  some visualisation of generations
-#  create for example 1000 runs of each parameter setting and create a boxplot visualisation of the final averages
-
 class FirstLayer:
-
-    def __init__(self, pset, grid_points, csv_exporter):
+    input_combinations = []
+    def __init__(self, pset, csv_exporter):
         self.pset = pset
         self.toolbox = None
-        self.grid_points = self.__get_points_for_run(grid_points)
         self.csv_exporter: CsvExporter = csv_exporter
-
-    def __get_points_for_run(self, new_grid_points):
-        # retrieve a certain percentage of points from the original set based on BOOTSTRAPPING_PERCENTAGE
-        amount_of_points = round(len(new_grid_points) * (BOOTSTRAPPING_PERCENTAGE / 100))
-        indices = np.arange(len(new_grid_points))
-        selected_indices = np.random.choice(indices, size=amount_of_points, replace=False)
-        return new_grid_points[selected_indices]
 
     # Define the fitness measure
     def __evaluate_individual(self, individual):
-        try:
-            function = gp.compile(expr=individual, pset=self.pset)
-            errors = []
-            for point in self.grid_points:
-                x, y = point
-                individual_output = function(x, y)
-                error = abs(target_polynomial(x, y) - individual_output)
-                errors.append(error)
-            total_error = sum(errors)
-            return total_error,
-        except Exception as e:
-            print(f"Error during evaluation: {e}")
-            return float('inf'),  # Return a high fitness in case of an error
+        function = gp.compile(expr=individual, pset=self.pset)
+        correct_assessments = 0
+        for input_combination in self.input_combinations:
+            expected_output = bool(self.__get_expected_output(input_combination))
+            actual_output = function(
+                bool(int(input_combination[0])), bool(int(input_combination[1])), bool(int(input_combination[2])),
+                bool(int(input_combination[3])), bool(int(input_combination[4])), bool(int(input_combination[5])),
+                bool(int(input_combination[6])), bool(int(input_combination[7])), bool(int(input_combination[8])),
+                bool(int(input_combination[9])), bool(int(input_combination[10])))
+            if expected_output == actual_output:
+                correct_assessments += 1
+        return correct_assessments,
 
-    def __evaluate_individual_mse(self, individual):
-        try:
-            function = gp.compile(expr=individual, pset=self.pset)
-            errors = []
-            for point in self.grid_points:
-                x, y = point
-                individual_output = function(x, y)
-                error = pow(target_polynomial(x, y) - individual_output, 2)
-                errors.append(error)
-            total_error = sum(errors) / len(errors)
-            return total_error,
-        except Exception as e:
-            print(f"Error during evaluation: {e}")
-            return float('inf')
+    def __get_expected_output(self, input_combination):
+        address_string = input_combination[:3]
+        address = int(address_string, 2)
+        return int(input_combination[10 - address])
+
+    def __generate_all_input_combinations_for_model(self, process_id):
+        all_combinations = []
+        process_id_bin_string = '{0:03b}'.format(process_id)
+        for x in range(256):
+            all_combinations.append(process_id_bin_string + '{0:08b}'.format(
+                x))  # https://stackoverflow.com/questions/10411085/converting-integer-to-binary-in-python
+        return all_combinations
 
     def __initialize_toolbox(self):
-        creator.create("FitnessMin", base.Fitness, weights=(-1.0,))
-        creator.create("Individual", gp.PrimitiveTree, fitness=creator.FitnessMin, pset=self.pset)
+        creator.create("FitnessMax", base.Fitness, weights=(1.0,))
+        creator.create("Individual", gp.PrimitiveTree, fitness=creator.FitnessMax, pset=self.pset)
         self.toolbox = base.Toolbox()
         self.toolbox.register("expr", gp.genGrow, pset=self.pset, min_=MIN_TREE_INIT_HEIGHT, max_=MAX_TREE_INIT_HEIGHT)
         self.toolbox.register("individual", tools.initIterate, creator.Individual, self.toolbox.expr)
@@ -104,13 +81,14 @@ class FirstLayer:
         self.toolbox.register("population", tools.initRepeat, list, self.toolbox.individual)
         self.toolbox.register("mate", koza_custom_two_point_crossover)
         self.toolbox.register("mutate", gp.mutNodeReplacement, pset=self.pset)
-        self.toolbox.register("evaluate", self.__evaluate_individual_mse)
-        self.toolbox.register("select", tools.selTournament, tournsize=TOURNAMENT_SIZE)
-        self.toolbox.register("trim", trim_individual)
+        self.toolbox.register("evaluate", self.__evaluate_individual)
+        self.toolbox.register("select", koza_over_selection, tournsize=TOURNAMENT_SIZE, population_size=POPULATION_SIZE)
+        self.toolbox.register("trim", trim_individual, max_tree_height=MAX_TREE_HEIGHT)
 
     def first_layer_evolution(self, process_id, new_terminal_list):
         try:
             self.__initialize_toolbox()
+            self.input_combinations = self.__generate_all_input_combinations_for_model(process_id)
             fitness_values = []
             hall_of_fame = tools.HallOfFame(maxsize=ELITES_SIZE)
             population = self.toolbox.population(n=POPULATION_SIZE)
@@ -129,7 +107,7 @@ class FirstLayer:
                 fitnesses = self.toolbox.map(self.toolbox.evaluate, offspring)
                 for ind, fit in zip(offspring, fitnesses):
                     ind.fitness.values = fit
-
+                print("Avg fitness: " + str(self.__calculate_avg_fitness(offspring)))
                 combined_population = population + offspring
 
                 # Implementation of elitism
@@ -154,20 +132,25 @@ class FirstLayer:
             print(f"Best individual: {best_current_individual}, Fitness: {best_current_individual.fitness.values[0]}")
             return best_current_individual
 
+    def __calculate_avg_fitness(self, population):
+        total_fitness = 0
+        for individual in population:
+            fitness = individual.fitness.values[0]
+            total_fitness += fitness
+        return total_fitness / len(population)
+
 
 if __name__ == "__main__":
     try:
         now = datetime.now()
         csvExporter = CsvExporter(now)
         manager = multiprocessing.Manager()
-        gp_first_layer_initializer = GpFirstLayerInitializer()
+        gp_first_layer_initializer = GpFirstLayerMUXInitializer()
         gp_first_layer_initializer.initialize_gp_run()
-        X, Y = np.meshgrid(X_RANGE, Y_RANGE)
-        grid_points = np.column_stack((X.flatten(), Y.flatten()))
         for run_number in range(NUMBER_OF_RUNS):
             print("Starting run " + str(run_number))
             new_terminals = manager.list()
-            first_layer_instance = FirstLayer(gp_first_layer_initializer.pset, grid_points, csvExporter)
+            first_layer_instance = FirstLayer(gp_first_layer_initializer.pset, csvExporter)
             with concurrent.futures.ProcessPoolExecutor() as executor:
 
                 futures = [executor.submit(first_layer_instance.first_layer_evolution, process_id, new_terminals) for
@@ -193,7 +176,7 @@ if __name__ == "__main__":
 
             gp_second_layer_initializer = GpSecondLayerInitializer(terminal_map)
             gp_second_layer_initializer.initialize_gp_run()
-            second_layer = SecondLayer(gp_first_layer_initializer.pset, gp_second_layer_initializer.pset)
+            second_layer = SecondLayerMultiplexer(gp_first_layer_initializer.pset, gp_second_layer_initializer.pset)
             if run_number == 0:
                 csvExporter.export_run_params_to_csv(first_layer_params, second_layer.second_layer_params)
             best_overall_individual = second_layer.execute_run()

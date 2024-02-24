@@ -4,8 +4,6 @@ import deap
 from deap import creator, gp
 from deap.tools import selection
 
-from gpInitialization import MAX_TREE_HEIGHT
-
 
 def koza_custom_two_point_crossover(parent1, parent2):
     if random.uniform(0, 1) <= 0.9:
@@ -49,9 +47,9 @@ def get_individual_height(individual):
     return max_depth
 
 
-def trim_individual(individual):
-    if get_individual_height(individual) > MAX_TREE_HEIGHT:
-        return gp.PrimitiveTree(individual[:MAX_TREE_HEIGHT])
+def trim_individual(individual, max_tree_height):
+    if get_individual_height(individual) > max_tree_height:
+        return gp.PrimitiveTree(individual[:max_tree_height])
     return individual
 
 

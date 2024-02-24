@@ -68,7 +68,8 @@ class GpSecondLayerInitializer:
         self.pset.renameArguments(ARG10="D7")
         for individual in self.subsets:
             present = False
-            # check if individual is not already present in the terminal list to avoid an exception due to the same terminal name
+            # check if individual is not already present in the terminal list to avoid an exception due to the same
+            # terminal name
             for terminal_list in self.pset.terminals.values():
                 for terminal in terminal_list:
                     if individual == terminal.name:
@@ -76,6 +77,3 @@ class GpSecondLayerInitializer:
                         break
             if not present:
                 self.pset.addTerminal(self.subsets[individual], name=str(individual))
-        print("Primitive Set Terminals:", self.pset.terminals)
-        self.pset.renameArguments(ARG0="x")
-        self.pset.renameArguments(ARG1="y")

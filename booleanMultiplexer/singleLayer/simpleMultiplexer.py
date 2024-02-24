@@ -4,7 +4,7 @@ from deap import algorithms, base, creator, tools, gp
 import traceback
 import multiprocessing
 
-from boolean_multiplexer.gpBooleanMultiplexerInitialization import GpFirstLayerMUXInitializer, NUMBER_OF_RUNS, \
+from booleanMultiplexer.gpBooleanMultiplexerInitialization import GpFirstLayerMUXInitializer, NUMBER_OF_RUNS, \
     MAX_TREE_HEIGHT
 from csvExport import CsvExporter
 from customLogic import koza_custom_two_point_crossover, trim_individual, koza_over_selection
@@ -44,6 +44,7 @@ class FirstLayer:
 
     # Define the fitness measure
     def __evaluate_individual(self, individual):
+        individual = gp.PrimitiveTree.from_string("(custom_if(A0, custom_if(A2, D7, D3), custom_if(A2, custom_if(A1, D6, D4), custom_if(A2, D4, custom_if(A1, D2, custom_if(A2, D7, D0))))))", self.pset)
         function = gp.compile(expr=individual, pset=self.pset)
         correct_assessments = 0
         for input_combination in self.input_combinations:
@@ -80,7 +81,7 @@ class FirstLayer:
         self.toolbox.register("mutate", gp.mutNodeReplacement, pset=self.pset)
         self.toolbox.register("evaluate", self.__evaluate_individual)
         self.toolbox.register("select", koza_over_selection, tournsize=TOURNAMENT_SIZE, population_size=POPULATION_SIZE)
-        self.toolbox.register("trim", trim_individual)
+        self.toolbox.register("trim", trim_individual, max_tree_height=MAX_TREE_HEIGHT)
 
     def first_layer_evolution(self, process_id, new_terminal_list, run_number):
         try:
