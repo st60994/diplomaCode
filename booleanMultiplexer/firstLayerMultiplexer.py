@@ -11,14 +11,12 @@ from booleanMultiplexer.secondLayerMultiplexer import SecondLayerMultiplexer
 from csvExport import CsvExporter
 from customLogic import koza_custom_two_point_crossover, trim_individual, koza_over_selection
 
-BOOTSTRAPPING_PERCENTAGE = 60
-
 TOURNAMENT_SIZE = 2
 ELITES_SIZE = 1
 NUMBER_OF_GENERATIONS = 2
 POPULATION_SIZE = 4000
 NUMBER_OF_SUB_MODELS = 8
-MIN_TREE_INIT_HEIGHT = 2
+MIN_TREE_INIT_HEIGHT = 4
 MAX_TREE_INIT_HEIGHT = 6
 TERMINALS_FROM_FIRST_LAYER = 1
 
@@ -31,7 +29,6 @@ first_layer_params = {
     'MAX_TREE_HEIGHT': MAX_TREE_HEIGHT,
     'MIN_TREE_INIT_HEIGHT': MIN_TREE_INIT_HEIGHT,
     'MAX_TREE_INIT_HEIGHT': MAX_TREE_INIT_HEIGHT,
-    'BOOTSTRAPPING_PERCENTAGE': BOOTSTRAPPING_PERCENTAGE,
     'TERMINALS_FROM_FIRST_LAYER': TERMINALS_FROM_FIRST_LAYER
 }
 
