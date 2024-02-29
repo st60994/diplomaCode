@@ -29,8 +29,15 @@ def koza_custom_two_point_crossover(parent1, parent2):
                 indices_of_terminals_parent2.append(i)
         crossing_index_parent2 = random.choice(indices_of_terminals_parent2)
 
-    combined_tree1 = parent1[:crossing_index_parent1] + parent2[crossing_index_parent2:]
-    combined_tree2 = parent2[:crossing_index_parent2] + parent1[crossing_index_parent1:]
+    slice1 = parent1.searchSubtree(crossing_index_parent1)
+    slice2 = parent2.searchSubtree(crossing_index_parent2)
+
+    start1, stop1 = slice1.start, slice1.stop
+    start2, stop2 = slice2.start, slice2.stop
+
+    # Perform crossover
+    combined_tree1 = parent1[:start1] + parent2[start2:stop2] + parent1[stop1:]
+    combined_tree2 = parent2[:start2] + parent1[start1:stop1] + parent2[stop2:]
     return creator.Individual(combined_tree1), creator.Individual(combined_tree2)
 
 
@@ -44,13 +51,80 @@ def get_individual_height(individual):
             stack.extend([depth + 1] * elem.arity)
         else:
             break  # Exit the loop if stack is empty
-    return max_depth
+    return max_depth + 1
+
+def get_nodes_with_height(individual, height):
+    stack = [0]
+    nodes = []
+    max_depth = 0
+    for i, elem in enumerate(individual):
+        if stack:  # Check if stack is not empty before popping
+            depth = stack.pop()
+            if height == depth:
+                nodes.append(i)
+            max_depth = max(max_depth, depth)
+            stack.extend([depth + 1] * elem.arity)
+        else:
+            break  # Exit the loop if stack is empty
+    return nodes
 
 
 def trim_individual(individual, max_tree_height):
-    if get_individual_height(individual) > max_tree_height:
-        return gp.PrimitiveTree(individual[:max_tree_height])
+    current_height = get_individual_height(individual)
+    indices = get_nodes_with_height(individual, 1) # TODO complete this
+    if current_height > max_tree_height:
+        trim_length = current_height - max_tree_height
+        individual = gp.PrimitiveTree(individual[:-trim_length])
     return individual
+
+
+def find_nodes_at_height(tree, target_height, current_height=1, index=0):
+    if index >= len(tree):
+        return []
+
+    if current_height == target_height:
+        return [index]
+
+    # Calculate the index of the first child of the current node
+    child_index = index + 1
+
+    # Recursively find nodes at the target height in the subtree
+    nodes_at_height = []
+    arity = tree[index].arity
+    for child_number in range(arity):
+        nodes_at_height.extend(find_nodes_at_height(tree, target_height, current_height + 1, child_index + child_number))
+        # Move to the next sibling node
+        child_index = get_next_sibling_index(tree, child_index)
+
+    return nodes_at_height
+
+
+def get_next_sibling_index(tree, index):
+    """
+    Function to get the index of the next sibling node.
+
+    Parameters:
+    - tree: The list representing the tree.
+    - index: Index of the current node.
+
+    Returns:
+    - Index of the next sibling node.
+    """
+    parent_index = index
+    while True:
+        parent_arity = tree[parent_index].arity
+        if parent_arity == 0:  # If parent has no siblings, return -1
+            return -1
+
+        # Move up the tree until finding a node with siblings or reaching the root
+        while parent_index > 0 and tree[parent_index - 1].arity == 0:
+            parent_index -= 1
+
+        # Check if there's a next sibling at the current level
+        if parent_index + parent_arity + 1 < len(tree) and tree[parent_index + parent_arity].arity != 0:
+            return parent_index + parent_arity + 1
+        else:
+            parent_index = parent_index + parent_arity  # Move to the next parent
 
 
 def koza_over_selection(individuals, k, tournsize, population_size):
