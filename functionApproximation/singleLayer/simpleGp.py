@@ -88,7 +88,7 @@ class FirstLayer:
         self.toolbox.register("mutate", gp.mutNodeReplacement, pset=self.pset)
         self.toolbox.register("evaluate", self.__evaluate_individual_mse)
         self.toolbox.register("select", tools.selTournament, tournsize=TOURNAMENT_SIZE)
-        self.toolbox.register("trim", trim_individual, max_tree_height=MAX_TREE_HEIGHT)
+        self.toolbox.register("trim", trim_individual, max_tree_height=MAX_TREE_HEIGHT, pset=self.pset)
 
     def first_layer_evolution(self, process_id):
         try:
