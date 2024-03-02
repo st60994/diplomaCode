@@ -7,10 +7,10 @@ from gpInitialization import target_polynomial, X_RANGE, Y_RANGE, MAX_TREE_HEIGH
 class SecondLayer:
     TOURNAMENT_SIZE = 2
     ELITES_SIZE = 1
-    NUMBER_OF_GENERATIONS = 30
-    POPULATION_SIZE = 100
-    MIN_TREE_INIT_HEIGHT = 3
-    MAX_TREE_INIT_HEIGHT = 3
+    NUMBER_OF_GENERATIONS = 10
+    POPULATION_SIZE = 200
+    MIN_TREE_INIT_HEIGHT = 2
+    MAX_TREE_INIT_HEIGHT = 6
 
     second_layer_params = {
         'TOURNAMENT_SIZE': TOURNAMENT_SIZE,
@@ -28,6 +28,7 @@ class SecondLayer:
     def __init__(self, first_layer_pset, second_layer_pset):
         self.first_layer_pset = first_layer_pset
         self.pset = second_layer_pset
+        self.number_of_approximations = 0
 
     # Define the fitness measure
     def __evaluate_individual(self, individual):
@@ -61,6 +62,7 @@ class SecondLayer:
                     error = pow(target_polynomial(x, y) - individual_output, 2)
                     errors.append(error)
             total_error = sum(errors) / len(errors)
+            self.number_of_approximations += 1
             return total_error,
         except Exception as e:
             print(f"Error during evaluation: {e}")
@@ -78,7 +80,7 @@ class SecondLayer:
         toolbox.register("population", tools.initRepeat, list, toolbox.individual)
         toolbox.register("evaluate", self.__evaluate_individual_mse)
         toolbox.register("mate", koza_custom_two_point_crossover)
-        toolbox.register("trim", trim_individual, max_tree_height=MAX_TREE_HEIGHT)
+        toolbox.register("trim", trim_individual, max_tree_height=MAX_TREE_HEIGHT, csv_export=self.csv_exporter)
         toolbox.register("mutate", gp.mutNodeReplacement, pset=self.pset)
         toolbox.register("select", tools.selTournament, tournsize=self.TOURNAMENT_SIZE)
         return toolbox
@@ -88,6 +90,7 @@ class SecondLayer:
         population = toolbox.population(n=self.POPULATION_SIZE)
         algorithms.eaSimple(population, toolbox, cxpb=0.9, mutpb=0.01, ngen=self.NUMBER_OF_GENERATIONS, stats=None,
                             verbose=False)
+        print("Second layer approx: " + str(self.number_of_approximations))
         if len(population) != 0:
             best_current_individual = tools.selBest(population, k=1)[0]
             fitness_values.append(best_current_individual.fitness.values[0])

@@ -14,8 +14,8 @@ from functionApproximation.gpInitialization import MAX_TREE_HEIGHT, LOWER_BOUND_
 TOURNAMENT_SIZE = 2
 ELITES_SIZE = 1
 NUMBER_OF_GENERATIONS = 100
-POPULATION_SIZE = 600
-MIN_TREE_INIT_HEIGHT = 2
+POPULATION_SIZE = 200
+MIN_TREE_INIT_HEIGHT = 3
 MAX_TREE_INIT_HEIGHT = 6
 TERMINALS_FROM_FIRST_LAYER = 1
 
@@ -44,6 +44,7 @@ class FirstLayer:
         self.toolbox = None
         self.grid_points = grid_points
         self.csv_exporter: CsvExporter = csv_exporter
+        self.number_of_approximations = 0
 
     # Define the fitness measure
     def __evaluate_individual(self, individual):
@@ -71,6 +72,7 @@ class FirstLayer:
                 error = pow(target_polynomial(x, y) - individual_output, 2)
                 errors.append(error)
             total_error = sum(errors) / len(errors)
+            self.number_of_approximations += 1
             return total_error,
         except Exception as e:
             print(f"Error during evaluation: {e}")
@@ -88,7 +90,7 @@ class FirstLayer:
         self.toolbox.register("mutate", gp.mutNodeReplacement, pset=self.pset)
         self.toolbox.register("evaluate", self.__evaluate_individual_mse)
         self.toolbox.register("select", tools.selTournament, tournsize=TOURNAMENT_SIZE)
-        self.toolbox.register("trim", trim_individual, max_tree_height=MAX_TREE_HEIGHT, pset=self.pset)
+        self.toolbox.register("trim", trim_individual, max_tree_height=MAX_TREE_HEIGHT, pset=self.pset, csv_export=self.csv_exporter)
 
     def first_layer_evolution(self, process_id):
         try:
@@ -147,7 +149,8 @@ if __name__ == "__main__":
             first_layer_instance = FirstLayer(gp_first_layer_initializer.pset, grid_points, csvExporter)
             best_overall_individual = first_layer_instance.first_layer_evolution(0)
             if run_number == 0:
-                csvExporter.export_run_params_to_csv(first_layer_params, [])
+                csvExporter.export_run_params_to_csv(first_layer_params, {})
             csvExporter.save_best_individual(best_overall_individual, run_number)
+            csvExporter.save_number_of_approximations(first_layer_instance.number_of_approximations, run_number)
     except:
         traceback.print_exc()

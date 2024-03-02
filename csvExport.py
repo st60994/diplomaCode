@@ -73,6 +73,20 @@ class CsvExporter:
             for key, value in second_layer_params.items():
                 writer.writerow([key, value])
 
+    def save_number_of_approximations(self, number_of_approximations, run_number):
+        file_path = self.folder_name / 'number_of_approximations.csv'
+        with open(file_path, 'a', newline='') as file:
+            writer = csv.writer(file, delimiter=';')
+            if run_number == 0:
+                writer.writerow(['Run number', 'Number of approximations'])
+            writer.writerow([run_number, number_of_approximations])
+
+    def save_badly_pruned_tree(self, pruned_tree):
+        file_path = self.folder_name / 'pruned_trees.csv'
+        with open(file_path, 'a', newline='') as file:
+            writer = csv.writer(file, delimiter=';')
+            writer.writerow([str(pruned_tree)])
+
     def __create_a_folder(self):
         try:
             Path(self.folder_name).mkdir(parents=True, exist_ok=True)
