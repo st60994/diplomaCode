@@ -1,7 +1,7 @@
 import random
 
 import deap
-from deap import creator, gp
+from deap import creator, gp, tools, algorithms
 from deap.tools import selection
 import traceback
 
@@ -135,3 +135,63 @@ def koza_over_selection(individuals, k, tournsize, population_size):
         return selection.selTournament(top_individuals, k, tournsize)
     else:
         return selection.selTournament(rest_individuals, k, tournsize)
+
+# TODO nefunguje first_layer_multiplexer kvůli adresním prostorům
+def gp_evolution(process_id, new_terminal_list, elites_size, population_size, number_of_generations,
+                 crossover_probability, mutation_probability,
+                 terminals_from_first_layer, toolbox, csv_exporter, layer_number, algorithm_type):
+    try:
+        hall_of_fame = tools.HallOfFame(maxsize=elites_size)
+        population = toolbox.population(n=population_size)
+    except:
+        print("Error during initial population generation")
+        traceback.print_exc()
+    for index in range(number_of_generations):
+        try:
+            print(str(process_id) + ": Generation " + str(index))
+            offspring = algorithms.varAnd(population, toolbox, cxpb=crossover_probability,
+                                          mutpb=mutation_probability)  # perform only mutation + crossover
+            for individual in offspring:
+                toolbox.trim(individual)
+
+            # Need to manually evaluate the offspring
+            fitnesses = toolbox.map(toolbox.evaluate, offspring)
+            for ind, fit in zip(offspring, fitnesses):
+                ind.fitness.values = fit
+
+            combined_population = population + offspring
+
+            # Implementation of elitism
+            hall_of_fame.update(population)
+            elites = hall_of_fame.items
+
+            offspring = toolbox.select(combined_population, population_size - elites_size)
+            offspring = offspring + elites
+
+            # Replace the current population by the offspring
+            population[:] = offspring
+            if process_id == 0:  # Only save the for process_id = 0 to avoid unnecessary delays
+                csv_exporter.save_best_individual_for_each_generation(tools.selBest(population, k=1)[0], index,
+                                                                      layer_number)
+            best_individual = tools.selBest(combined_population, k=1)[0]
+            if algorithm_type == "approximation":
+                if best_individual.fitness.values[0] == 0:
+                    break
+            else:
+                if best_individual.fitness.values[0] == 2048.0:
+                    break # TODO first_layer u MUX bude muset mít jinou fitness + změnit místo stringu na enum
+        except:
+            if layer_number == 1:
+                print("Exception in first layer generation loop")
+            else:
+                print("Exception in second layer generation loop")
+            traceback.print_exc()
+    if terminals_from_first_layer != 0 and new_terminal_list is not None:
+        if terminals_from_first_layer == 1:
+            new_terminal_list.append(tools.selBest(population, k=1)[0])
+        else:
+            new_terminal_list += population
+    if len(population) != 0:
+        best_current_individual = tools.selBest(population, k=1)[0]
+        print(f"Best individual: {best_current_individual}, Fitness: {best_current_individual.fitness.values[0]}")
+        return best_current_individual

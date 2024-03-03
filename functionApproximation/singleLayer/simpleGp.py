@@ -1,12 +1,12 @@
 from datetime import datetime
 
 import numpy as np
-from deap import algorithms, base, creator, tools, gp
+from deap import base, creator, tools, gp
 import traceback
 import multiprocessing
 
 from csvExport import CsvExporter
-from customLogic import koza_custom_two_point_crossover, trim_individual
+from customLogic import koza_custom_two_point_crossover, trim_individual, gp_evolution
 from functionApproximation.gpInitialization import MAX_TREE_HEIGHT, LOWER_BOUND_X, UPPER_BOUND_X, LOWER_BOUND_Y, \
     UPPER_BOUND_Y, STEP_SIZE_X, STEP_SIZE_Y, target_polynomial, NUMBER_OF_RUNS, X_RANGE, Y_RANGE, \
     GpFirstLayerInitializer
@@ -15,9 +15,12 @@ TOURNAMENT_SIZE = 2
 ELITES_SIZE = 1
 NUMBER_OF_GENERATIONS = 100
 POPULATION_SIZE = 200
-MIN_TREE_INIT_HEIGHT = 3
+MIN_TREE_INIT_HEIGHT = 2
 MAX_TREE_INIT_HEIGHT = 6
 TERMINALS_FROM_FIRST_LAYER = 1
+CROSSOVER_PROBABILITY = 0.9
+MUTATION_PROBABILITY = 0.01
+
 
 first_layer_params = {
     'TOURNAMENT_SIZE': TOURNAMENT_SIZE,
@@ -33,7 +36,9 @@ first_layer_params = {
     'UPPER_BOUND_Y': UPPER_BOUND_Y,
     'STEP_SIZE_X': STEP_SIZE_X,
     'STEP_SIZE_Y': STEP_SIZE_Y,
-    'TERMINALS_FROM_FIRST_LAYER': TERMINALS_FROM_FIRST_LAYER
+    'TERMINALS_FROM_FIRST_LAYER': TERMINALS_FROM_FIRST_LAYER,
+    'CROSSOVER_PROBABILITY': CROSSOVER_PROBABILITY,
+    'MUTATION_PROBABILITY': MUTATION_PROBABILITY,
 }
 
 
@@ -46,7 +51,7 @@ class FirstLayer:
         self.csv_exporter: CsvExporter = csv_exporter
         self.number_of_approximations = 0
 
-    # Define the fitness measure
+    # Define the fitness measure, unused
     def __evaluate_individual(self, individual):
         try:
             function = gp.compile(expr=individual, pset=self.pset)
@@ -78,7 +83,7 @@ class FirstLayer:
             print(f"Error during evaluation: {e}")
             return float('inf')
 
-    def __initialize_toolbox(self):
+    def initialize_toolbox(self):
         creator.create("FitnessMin", base.Fitness, weights=(-1.0,))
         creator.create("Individual", gp.PrimitiveTree, fitness=creator.FitnessMin, pset=self.pset)
         self.toolbox = base.Toolbox()
@@ -90,49 +95,8 @@ class FirstLayer:
         self.toolbox.register("mutate", gp.mutNodeReplacement, pset=self.pset)
         self.toolbox.register("evaluate", self.__evaluate_individual_mse)
         self.toolbox.register("select", tools.selTournament, tournsize=TOURNAMENT_SIZE)
-        self.toolbox.register("trim", trim_individual, max_tree_height=MAX_TREE_HEIGHT, pset=self.pset, csv_export=self.csv_exporter)
-
-    def first_layer_evolution(self, process_id):
-        try:
-            self.__initialize_toolbox()
-            fitness_values = []
-            hall_of_fame = tools.HallOfFame(maxsize=ELITES_SIZE)
-            population = self.toolbox.population(n=POPULATION_SIZE)
-        except:
-            print("err")
-            traceback.print_exc()
-        for index in range(NUMBER_OF_GENERATIONS):
-            try:
-                print(str(process_id) + ": Generation " + str(index))
-                offspring = algorithms.varAnd(population, self.toolbox, cxpb=0.9,
-                                              mutpb=0.01)  # perform only mutation + crossover
-                for individual in offspring:
-                    self.toolbox.trim(individual)
-
-                # Need to manually evaluate the offspring
-                fitnesses = self.toolbox.map(self.toolbox.evaluate, offspring)
-                for ind, fit in zip(offspring, fitnesses):
-                    ind.fitness.values = fit
-
-                combined_population = population + offspring
-
-                # Implementation of elitism
-                hall_of_fame.update(combined_population)
-                offspring = self.toolbox.select(combined_population, POPULATION_SIZE)
-
-                # Replace the current population by the offspring
-                population[:] = offspring
-                if process_id == 0:  # Only save the for process_id = 0 to avoid unnecessary delays
-                    self.csv_exporter.save_best_individual_for_each_generation(tools.selBest(population, k=1)[0], index)
-                combined_population += population
-            except:
-                print("Exception in first layer generation loop")
-                traceback.print_exc()
-        if len(population) != 0:
-            best_current_individual = tools.selBest(population, k=1)[0]
-            fitness_values.append(best_current_individual.fitness.values[0])
-            print(f"Best individual: {best_current_individual}, Fitness: {best_current_individual.fitness.values[0]}")
-            return best_current_individual
+        self.toolbox.register("trim", trim_individual, max_tree_height=MAX_TREE_HEIGHT, pset=self.pset,
+                              csv_export=self.csv_exporter)
 
 
 if __name__ == "__main__":
@@ -147,7 +111,10 @@ if __name__ == "__main__":
         for run_number in range(NUMBER_OF_RUNS):
             print("Starting run " + str(run_number))
             first_layer_instance = FirstLayer(gp_first_layer_initializer.pset, grid_points, csvExporter)
-            best_overall_individual = first_layer_instance.first_layer_evolution(0)
+            first_layer_instance.initialize_toolbox()
+            best_overall_individual = gp_evolution(0, None, ELITES_SIZE, POPULATION_SIZE, NUMBER_OF_GENERATIONS,
+                                                   CROSSOVER_PROBABILITY, MUTATION_PROBABILITY, 0,
+                                                   first_layer_instance.toolbox, csvExporter, 1, "approximation")
             if run_number == 0:
                 csvExporter.export_run_params_to_csv(first_layer_params, {})
             csvExporter.save_best_individual(best_overall_individual, run_number)

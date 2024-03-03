@@ -1,6 +1,6 @@
-from deap import gp, creator, base, tools, algorithms
+from deap import gp, creator, base, tools
 
-from customLogic import koza_custom_two_point_crossover, trim_individual
+from customLogic import koza_custom_two_point_crossover, trim_individual, gp_evolution
 from gpInitialization import target_polynomial, X_RANGE, Y_RANGE, MAX_TREE_HEIGHT
 
 
@@ -11,6 +11,8 @@ class SecondLayer:
     POPULATION_SIZE = 200
     MIN_TREE_INIT_HEIGHT = 2
     MAX_TREE_INIT_HEIGHT = 6
+    CROSSOVER_PROBABILITY = 0.9
+    MUTATION_PROBABILITY = 0.01
 
     second_layer_params = {
         'TOURNAMENT_SIZE': TOURNAMENT_SIZE,
@@ -25,10 +27,11 @@ class SecondLayer:
     pset = None
     first_layer_pset = None
 
-    def __init__(self, first_layer_pset, second_layer_pset):
+    def __init__(self, first_layer_pset, second_layer_pset, csv_exporter):
         self.first_layer_pset = first_layer_pset
         self.pset = second_layer_pset
         self.number_of_approximations = 0
+        self.csv_exporter = csv_exporter
 
     # Define the fitness measure
     def __evaluate_individual(self, individual):
@@ -80,23 +83,14 @@ class SecondLayer:
         toolbox.register("population", tools.initRepeat, list, toolbox.individual)
         toolbox.register("evaluate", self.__evaluate_individual_mse)
         toolbox.register("mate", koza_custom_two_point_crossover)
-        toolbox.register("trim", trim_individual, max_tree_height=MAX_TREE_HEIGHT, csv_export=self.csv_exporter)
+        toolbox.register("trim", trim_individual, max_tree_height=MAX_TREE_HEIGHT, pset=self.pset,
+                         csv_export=self.csv_exporter)
         toolbox.register("mutate", gp.mutNodeReplacement, pset=self.pset)
         toolbox.register("select", tools.selTournament, tournsize=self.TOURNAMENT_SIZE)
         return toolbox
 
-    def __second_layer_evolution(self, toolbox):
-        fitness_values = []
-        population = toolbox.population(n=self.POPULATION_SIZE)
-        algorithms.eaSimple(population, toolbox, cxpb=0.9, mutpb=0.01, ngen=self.NUMBER_OF_GENERATIONS, stats=None,
-                            verbose=False)
-        print("Second layer approx: " + str(self.number_of_approximations))
-        if len(population) != 0:
-            best_current_individual = tools.selBest(population, k=1)[0]
-            fitness_values.append(best_current_individual.fitness.values[0])
-            print(f"Best individual: {best_current_individual}, Fitness: {best_current_individual.fitness.values[0]}")
-            return best_current_individual
-
     def execute_run(self):
         toolbox = self.__prepare_run()
-        return self.__second_layer_evolution(toolbox)
+        return gp_evolution(0, None, self.ELITES_SIZE, self.POPULATION_SIZE, self.NUMBER_OF_GENERATIONS,
+                            self.CROSSOVER_PROBABILITY, self.MUTATION_PROBABILITY, 0, toolbox, self.csv_exporter, 2,
+                            "approximation")

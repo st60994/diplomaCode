@@ -28,8 +28,10 @@ class CsvExporter:
                 writer.writerow(['Run number', 'Individual', 'Fitness'])
             writer.writerow([run_number, best_individual, best_individual.fitness.values[0]])
 
-    def save_best_individual_for_each_generation(self, best_individual, generation_number):
-        file_path = self.folder_name / 'best_individual_generation.csv'
+    def save_best_individual_for_each_generation(self, best_individual, generation_number, layer_number):
+        folder_path = self.folder_name / str(layer_number)
+        Path(folder_path).mkdir(parents=True, exist_ok=True)
+        file_path = folder_path / 'best_individual_generation.csv'
         with open(file_path, 'a', newline='') as file:
             writer = csv.writer(file, delimiter=';')
             if generation_number == 0:
