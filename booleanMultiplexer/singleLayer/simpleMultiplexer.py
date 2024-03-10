@@ -109,7 +109,7 @@ if __name__ == "__main__":
             first_layer_instance.initialize_toolbox()
             best_individual = gp_evolution(0, None, ELITES_SIZE, POPULATION_SIZE, NUMBER_OF_GENERATIONS,
                                            CROSSOVER_PROBABILITY, MUTATION_PROBABILITY, 0,
-                                           first_layer_instance.toolbox, csvExporter, 1, "MUX")
+                                           first_layer_instance.toolbox, csvExporter, 1, "MUX", None, 1)
             if run_number == 0:
                 csvExporter.export_run_params_to_csv(first_layer_params, {})
             csvExporter.save_best_individual(best_individual, run_number)

@@ -5,6 +5,8 @@ from deap import creator, gp, tools, algorithms
 from deap.tools import selection
 import traceback
 
+from booleanMultiplexer.muxCustomLogic import generate_all_input_combinations_for_model
+
 
 def koza_custom_two_point_crossover(parent1, parent2):
     if random.uniform(0, 1) <= 0.9:
@@ -136,13 +138,17 @@ def koza_over_selection(individuals, k, tournsize, population_size):
     else:
         return selection.selTournament(rest_individuals, k, tournsize)
 
-# TODO nefunguje first_layer_multiplexer kvůli adresním prostorům
+
 def gp_evolution(process_id, new_terminal_list, elites_size, population_size, number_of_generations,
                  crossover_probability, mutation_probability,
-                 terminals_from_first_layer, toolbox, csv_exporter, layer_number, algorithm_type):
+                 terminals_from_first_layer, toolbox, csv_exporter, layer_number, algorithm_type, process_address_map,
+                 number_of_layers):
+    input_combinations = None
     try:
         hall_of_fame = tools.HallOfFame(maxsize=elites_size)
         population = toolbox.population(n=population_size)
+        if algorithm_type == "MUX" and layer_number == 1 and number_of_layers == 2:
+            input_combinations = generate_all_input_combinations_for_model(process_id, process_address_map)
     except:
         print("Error during initial population generation")
         traceback.print_exc()
@@ -155,9 +161,14 @@ def gp_evolution(process_id, new_terminal_list, elites_size, population_size, nu
                 toolbox.trim(individual)
 
             # Need to manually evaluate the offspring
-            fitnesses = toolbox.map(toolbox.evaluate, offspring)
-            for ind, fit in zip(offspring, fitnesses):
-                ind.fitness.values = fit
+            if algorithm_type == "MUX" and layer_number == 1 and number_of_layers == 2:  # only do it for first layer of two layer mux
+                fitnesses = toolbox.map(toolbox.evaluate, offspring, [input_combinations] * len(offspring))
+                for ind, fit in zip(offspring, fitnesses):
+                    ind.fitness.values = fit
+            else:
+                fitnesses = toolbox.map(toolbox.evaluate, offspring)
+                for ind, fit in zip(offspring, fitnesses):
+                    ind.fitness.values = fit
 
             combined_population = population + offspring
 
@@ -177,9 +188,11 @@ def gp_evolution(process_id, new_terminal_list, elites_size, population_size, nu
             if algorithm_type == "approximation":
                 if best_individual.fitness.values[0] == 0:
                     break
-            else:
-                if best_individual.fitness.values[0] == 2048.0:
-                    break # TODO first_layer u MUX bude muset mít jinou fitness + změnit místo stringu na enum
+            else:  # TODO check if not bugging
+                if layer_number == 1 and best_individual.fitness.values[0] == len(input_combinations):
+                    break
+                elif best_individual.fitness.values[0] == 2048.0:
+                    break
         except:
             if layer_number == 1:
                 print("Exception in first layer generation loop")

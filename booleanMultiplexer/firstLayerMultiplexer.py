@@ -2,7 +2,7 @@ import concurrent.futures
 import random
 from datetime import datetime
 
-from deap import algorithms, base, creator, tools, gp
+from deap import base, creator, tools, gp
 import traceback
 import multiprocessing
 
@@ -10,12 +10,12 @@ from booleanMultiplexer.gpBooleanMultiplexerInitialization import GpFirstLayerMU
     MAX_TREE_HEIGHT, GpSecondLayerInitializer
 from booleanMultiplexer.secondLayerMultiplexer import SecondLayerMultiplexer
 from csvExport import CsvExporter
-from customLogic import koza_custom_two_point_crossover, trim_individual, koza_over_selection, gp_evolution
+from customLogic import koza_custom_two_point_crossover, trim_individual, gp_evolution
 
 TOURNAMENT_SIZE = 2
 ELITES_SIZE = 1
 NUMBER_OF_GENERATIONS = 51
-POPULATION_SIZE = 500
+POPULATION_SIZE = 50
 NUMBER_OF_SUB_MODELS = 8
 MIN_TREE_INIT_HEIGHT = 2
 MAX_TREE_INIT_HEIGHT = 5
@@ -49,10 +49,10 @@ class FirstLayer:
         self.csv_exporter: CsvExporter = csv_exporter
 
     # Define the fitness measure
-    def evaluate_individual(self, individual):
+    def evaluate_individual(self, individual, input_combinations):
         function = gp.compile(expr=individual, pset=self.pset)
         correct_assessments = 0
-        for input_combination in self.input_combinations:
+        for input_combination in input_combinations:
             expected_output = bool(self.__get_expected_output(input_combination))
             actual_output = function(
                 bool(int(input_combination[0])), bool(int(input_combination[1])), bool(int(input_combination[2])),
@@ -68,15 +68,6 @@ class FirstLayer:
         address = int(address_string, 2)
         return int(input_combination[10 - address])
 
-    def generate_all_input_combinations_for_model(self, process_id, process_address_map):
-        all_combinations = []
-        for x in range(256):
-            for address_to_approximate in process_address_map[process_id]:
-                process_id_bin_string = '{0:03b}'.format(address_to_approximate)
-                all_combinations.append(process_id_bin_string + '{0:08b}'.format(
-                    x))  # https://stackoverflow.com/questions/10411085/converting-integer-to-binary-in-python
-        return all_combinations
-
     def initialize_toolbox(self):
         creator.create("FitnessMax", base.Fitness, weights=(1.0,))
         creator.create("Individual", gp.PrimitiveTree, fitness=creator.FitnessMax, pset=self.pset)
@@ -91,58 +82,6 @@ class FirstLayer:
         self.toolbox.register("select", tools.selTournament, tournsize=TOURNAMENT_SIZE)
         self.toolbox.register("trim", trim_individual, max_tree_height=MAX_TREE_HEIGHT, pset=self.pset,
                               csv_export=self.csv_exporter)
-
-    def first_layer_evolution(self, process_id, new_terminal_list, process_address_map):
-        try:
-            self.__initialize_toolbox()
-            self.input_combinations = self.generate_all_input_combinations_for_model(process_id, process_address_map)
-            fitness_values = []
-            hall_of_fame = tools.HallOfFame(maxsize=ELITES_SIZE)
-            population = self.toolbox.population(n=POPULATION_SIZE)
-        except:
-            print("err")
-            traceback.print_exc()
-        for index in range(NUMBER_OF_GENERATIONS):
-            try:
-                print(str(process_id) + ": Generation " + str(index))
-                offspring = algorithms.varAnd(population, self.toolbox, cxpb=0.9,
-                                              mutpb=0.01)  # perform only mutation + crossover
-                for individual in offspring:
-                    self.toolbox.trim(individual)
-
-                # Need to manually evaluate the offspring
-                fitnesses = self.toolbox.map(self.toolbox.evaluate, offspring)
-                for ind, fit in zip(offspring, fitnesses):
-                    ind.fitness.values = fit
-                print("Avg fitness: " + str(self.__calculate_avg_fitness(offspring)))
-                combined_population = population + offspring
-
-                # Implementation of elitism
-                hall_of_fame.update(combined_population)
-                offspring = self.toolbox.select(combined_population, POPULATION_SIZE)
-
-                # Replace the current population by the offspring
-                population[:] = offspring
-                if process_id == 0:  # Only save the for process_id = 0 to avoid unnecessary delays
-                    self.csv_exporter.save_best_individual_for_each_generation(tools.selBest(population, k=1)[0], index,
-                                                                               1)
-                combined_population += population
-                best_individual = tools.selBest(combined_population, k=1)[0]
-                if best_individual.fitness.values[0] == 256 * NUMBER_OF_ADDRESSES_TO_APPROXIMATE:
-                    print(str(process_id) + " ended at generation: " + str(index))
-                    break
-            except:
-                print("Exception in first layer generation loop")
-                traceback.print_exc()
-        if TERMINALS_FROM_FIRST_LAYER == 1:
-            new_terminal_list.append(tools.selBest(population, k=1)[0])
-        else:
-            new_terminal_list += population
-        if len(population) != 0:
-            best_current_individual = tools.selBest(population, k=1)[0]
-            fitness_values.append(best_current_individual.fitness.values[0])
-            print(f"Best individual: {best_current_individual}, Fitness: {best_current_individual.fitness.values[0]}")
-            return best_current_individual
 
     def __calculate_avg_fitness(self, population):
         total_fitness = 0
@@ -173,13 +112,12 @@ if __name__ == "__main__":
                 process_addresses_map[process_id] = random.sample(address_pool, NUMBER_OF_ADDRESSES_TO_APPROXIMATE)
                 for address in process_addresses_map[process_id]:
                     address_pool.remove(address)
-            for process_id in range(NUMBER_OF_SUB_MODELS):
-                first_layer_instance.generate_all_input_combinations_for_model(process_id, process_addresses_map)
             with concurrent.futures.ProcessPoolExecutor() as executor:
                 futures = [executor.submit(gp_evolution, process_id, new_terminals, ELITES_SIZE, POPULATION_SIZE,
                                            NUMBER_OF_GENERATIONS, CROSSOVER_PROBABILITY,
                                            MUTATION_PROBABILITY, TERMINALS_FROM_FIRST_LAYER,
-                                           first_layer_instance.toolbox, first_layer_instance.csv_exporter, 1, "MUX")
+                                           first_layer_instance.toolbox, first_layer_instance.csv_exporter, 1, "MUX",
+                                           process_addresses_map, 2)
                            for
                            process_id
                            in

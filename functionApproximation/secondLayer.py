@@ -93,4 +93,4 @@ class SecondLayer:
         toolbox = self.__prepare_run()
         return gp_evolution(0, None, self.ELITES_SIZE, self.POPULATION_SIZE, self.NUMBER_OF_GENERATIONS,
                             self.CROSSOVER_PROBABILITY, self.MUTATION_PROBABILITY, 0, toolbox, self.csv_exporter, 2,
-                            "approximation")
+                            "approximation", None, 2)

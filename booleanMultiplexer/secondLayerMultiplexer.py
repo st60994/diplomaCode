@@ -74,9 +74,9 @@ class SecondLayerMultiplexer:
         toolbox.register("mate", koza_custom_two_point_crossover)
         toolbox.register("mutate", gp.mutNodeReplacement, pset=self.pset)
         toolbox.register("evaluate", self.__evaluate_individual)
-        self.toolbox.register("select", tools.selTournament, tournsize=self.TOURNAMENT_SIZE)
+        toolbox.register("select", tools.selTournament, tournsize=self.TOURNAMENT_SIZE)
 
-        self.toolbox.register("trim", trim_individual, max_tree_height=MAX_TREE_HEIGHT, pset=self.pset,
+        toolbox.register("trim", trim_individual, max_tree_height=MAX_TREE_HEIGHT, pset=self.pset,
                               csv_export=self.csv_exporter)
         return toolbox
 
@@ -95,4 +95,4 @@ class SecondLayerMultiplexer:
         toolbox = self.__prepare_run()
         return gp_evolution(0, None, self.ELITES_SIZE, self.POPULATION_SIZE, self.NUMBER_OF_GENERATIONS,
                             self.CROSSOVER_PROBABILITY, self.MUTATION_PROBABILITY, 0, toolbox, self.csv_exporter, 2,
-                            "MUX")
+                            "MUX", None, 2)

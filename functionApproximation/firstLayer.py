@@ -129,7 +129,7 @@ if __name__ == "__main__":
                 futures = [executor.submit(gp_evolution, process_id, new_terminals, ELITES_SIZE, POPULATION_SIZE,
                                            NUMBER_OF_GENERATIONS, CROSSOVER_PROBABILITY,
                                            MUTATION_PROBABILITY, TERMINALS_FROM_FIRST_LAYER,
-                                           first_layer_instance.toolbox, first_layer_instance.csv_exporter, 1, "approximation") for
+                                           first_layer_instance.toolbox, first_layer_instance.csv_exporter, 1, "approximation", None, 2) for
                            process_id
                            in
                            range(NUMBER_OF_SUB_MODELS)]
