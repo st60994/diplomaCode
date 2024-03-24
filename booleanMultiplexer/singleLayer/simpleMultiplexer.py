@@ -79,7 +79,7 @@ class FirstLayer:
         self.toolbox.register("evaluate", self.__evaluate_individual_MUX)
         self.toolbox.register("select", tools.selTournament, tournsize=TOURNAMENT_SIZE) # no longer need kozas overselection, because the population is quite small
         self.toolbox.register("trim", trim_individual, max_tree_height=MAX_TREE_HEIGHT, pset=self.pset,
-                              csv_export=self.csv_exporter)
+                              csv_export=self.csv_exporter, second_layer=False)
 
     def __calculate_avg_fitness(self, population):
         total_fitness = 0

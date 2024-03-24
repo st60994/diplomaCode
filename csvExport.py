@@ -86,7 +86,7 @@ class CsvExporter:
                 writer.writerow(['Run number', 'Number of approximations'])
             writer.writerow([run_number, number_of_approximations])
 
-    def save_badly_pruned_tree(self, pruned_tree):
+    def save_pruned_tree(self, pruned_tree):
         file_path = self.folder_name / 'pruned_trees.csv'
         with open(file_path, 'a', newline='') as file:
             writer = csv.writer(file, delimiter=';')

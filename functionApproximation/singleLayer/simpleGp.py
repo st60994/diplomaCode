@@ -96,7 +96,7 @@ class FirstLayer:
         self.toolbox.register("evaluate", self.__evaluate_individual_mse)
         self.toolbox.register("select", tools.selTournament, tournsize=TOURNAMENT_SIZE)
         self.toolbox.register("trim", trim_individual, max_tree_height=MAX_TREE_HEIGHT, pset=self.pset,
-                              csv_export=self.csv_exporter)
+                              csv_export=self.csv_exporter, second_layer=False)
 
 
 if __name__ == "__main__":

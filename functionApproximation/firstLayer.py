@@ -107,7 +107,7 @@ class FirstLayer:
         self.toolbox.register("evaluate", self.evaluate_individual_mse)
         self.toolbox.register("select", tools.selTournament, tournsize=TOURNAMENT_SIZE)
         self.toolbox.register("trim", trim_individual, max_tree_height=MAX_TREE_HEIGHT, pset=self.pset,
-                              csv_export=self.csv_exporter)
+                              csv_export=self.csv_exporter, second_layer=False)
 
 
 if __name__ == "__main__":
@@ -129,7 +129,8 @@ if __name__ == "__main__":
                 futures = [executor.submit(gp_evolution, process_id, new_terminals, ELITES_SIZE, POPULATION_SIZE,
                                            NUMBER_OF_GENERATIONS, CROSSOVER_PROBABILITY,
                                            MUTATION_PROBABILITY, TERMINALS_FROM_FIRST_LAYER,
-                                           first_layer_instance.toolbox, first_layer_instance.csv_exporter, 1, "approximation", None, 2) for
+                                           first_layer_instance.toolbox, first_layer_instance.csv_exporter, 1,
+                                           "approximation", None, 2) for
                            process_id
                            in
                            range(NUMBER_OF_SUB_MODELS)]
@@ -151,7 +152,8 @@ if __name__ == "__main__":
 
             gp_second_layer_initializer = GpSecondLayerInitializer(terminal_map)
             gp_second_layer_initializer.initialize_gp_run()
-            second_layer = SecondLayer(gp_first_layer_initializer.pset, gp_second_layer_initializer.pset, csv_exporter)
+            second_layer = SecondLayer(gp_first_layer_initializer.pset, gp_second_layer_initializer.pset,
+                                       gp_second_layer_initializer.pset_without_first_layer_terminals, csv_exporter)
             if run_number == 0:
                 csv_exporter.export_run_params_to_csv(first_layer_params, second_layer.second_layer_params)
             best_overall_individual = second_layer.execute_run()

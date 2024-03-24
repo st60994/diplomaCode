@@ -73,8 +73,11 @@ def get_nodes_with_height(individual, height):
     return nodes
 
 
-def trim_individual(individual, max_tree_height, pset, csv_export):
+def trim_individual(individual, max_tree_height, pset, csv_export, second_layer):
     try:
+        if second_layer:
+            individual = gp.PrimitiveTree.from_string(str(individual),
+                                                      pset)  # We have to reparse it to get the real tree height
         base_individual = individual
         current_height = get_individual_height(individual)
         list_individual = None
@@ -95,9 +98,7 @@ def trim_individual(individual, max_tree_height, pset, csv_export):
                     list_individual[altered_index] = random.choice(pset.terminals[object])
         if list_individual is not None:  # needs trimming
             individual = creator.Individual(list_individual)
-            height = get_individual_height(individual)
-            if height != max_tree_height:
-                csv_export.save_badly_pruned_tree(base_individual)
+            csv_export.save_pruned_tree(base_individual)
     except:
         print("Exception in first layer generation loop")
         traceback.print_exc()

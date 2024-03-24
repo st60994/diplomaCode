@@ -76,8 +76,8 @@ class SecondLayerMultiplexer:
         toolbox.register("evaluate", self.__evaluate_individual)
         toolbox.register("select", tools.selTournament, tournsize=self.TOURNAMENT_SIZE)
 
-        toolbox.register("trim", trim_individual, max_tree_height=MAX_TREE_HEIGHT, pset=self.pset,
-                              csv_export=self.csv_exporter)
+        toolbox.register("trim", trim_individual, max_tree_height=MAX_TREE_HEIGHT, pset=self.first_layer_pset, # TODO will need tweaking when terminals and primitives change across layers
+                              csv_export=self.csv_exporter, second_layer=True)
         return toolbox
 
     def __second_layer_evolution(self, toolbox):

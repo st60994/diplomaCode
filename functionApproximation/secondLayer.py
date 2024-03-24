@@ -27,9 +27,11 @@ class SecondLayer:
     pset = None
     first_layer_pset = None
 
-    def __init__(self, first_layer_pset, second_layer_pset, csv_exporter):
+    def __init__(self, first_layer_pset, second_layer_pset, second_layer_pset_without_terminals_from_first_layer,
+                 csv_exporter):
         self.first_layer_pset = first_layer_pset
         self.pset = second_layer_pset
+        self.second_layer_pset_without_terminals_from_first_layer = second_layer_pset_without_terminals_from_first_layer
         self.number_of_approximations = 0
         self.csv_exporter = csv_exporter
 
@@ -83,8 +85,9 @@ class SecondLayer:
         toolbox.register("population", tools.initRepeat, list, toolbox.individual)
         toolbox.register("evaluate", self.__evaluate_individual_mse)
         toolbox.register("mate", koza_custom_two_point_crossover)
-        toolbox.register("trim", trim_individual, max_tree_height=MAX_TREE_HEIGHT, pset=self.pset,
-                         csv_export=self.csv_exporter)
+        toolbox.register("trim", trim_individual, max_tree_height=MAX_TREE_HEIGHT,
+                         pset=self.second_layer_pset_without_terminals_from_first_layer,
+                         csv_export=self.csv_exporter, second_layer=True)
         toolbox.register("mutate", gp.mutNodeReplacement, pset=self.pset)
         toolbox.register("select", tools.selTournament, tournsize=self.TOURNAMENT_SIZE)
         return toolbox

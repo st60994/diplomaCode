@@ -1,3 +1,4 @@
+import copy
 import operator
 
 import numpy as np
@@ -53,6 +54,7 @@ class GpSecondLayerInitializer:
 
     def __init__(self, subsets):
         self.pset = None
+        self.pset_without_first_layer_terminals = None
         self.subsets = subsets
 
     def initialize_gp_run(self):
@@ -62,19 +64,30 @@ class GpSecondLayerInitializer:
 
     def __add_primitive_set(self):
         self.pset.addPrimitive(operator.mul, 2)
+        self.pset_without_first_layer_terminals.addPrimitive(operator.mul, 2)
         self.pset.addPrimitive(protected_add, 2)
+        self.pset_without_first_layer_terminals.addPrimitive(protected_add, 2)
         self.pset.addPrimitive(operator.sub, 2)
+        self.pset_without_first_layer_terminals.addPrimitive(operator.sub, 2)
         self.pset.addPrimitive(sqrt, 1)
+        self.pset_without_first_layer_terminals.addPrimitive(sqrt, 1)
         # self.pset.addPrimitive(sin, 1)
+        # self.pset_without_first_layer_terminals.addPrimitive(sin, 1)
         self.pset.addPrimitive(pow2, 1)
+        self.pset_without_first_layer_terminals.addPrimitive(pow2, 1)
         self.pset.addPrimitive(pow3, 1)
+        self.pset_without_first_layer_terminals.addPrimitive(pow3, 1)
         #   self.pset.addPrimitive(avg, 1)
+        # self.pset_without_first_layer_terminals.addPrimitive(avg, 1)
 
     def __create_terminal_set(self):
         self.pset.addTerminal(-1.0)
         self.pset.addTerminal(1.0)
         self.pset.addTerminal(2.0)
         self.pset.addTerminal(3.0)
+        self.pset.renameArguments(ARG0="x")
+        self.pset.renameArguments(ARG1="y")
+        self.pset_without_first_layer_terminals = copy.deepcopy(self.pset)
         for individual in self.subsets:
             present = False
             # check if individual is not already present in the terminal list to avoid an exception due to the same terminal name
@@ -86,5 +99,3 @@ class GpSecondLayerInitializer:
             if not present:
                 self.pset.addTerminal(self.subsets[individual], name=str(individual))
         print("Primitive Set Terminals:", self.pset.terminals)
-        self.pset.renameArguments(ARG0="x")
-        self.pset.renameArguments(ARG1="y")
