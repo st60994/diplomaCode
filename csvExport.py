@@ -2,6 +2,8 @@ import traceback
 import csv
 from pathlib import Path
 
+from customLogic import get_individual_height
+
 
 class CsvExporter:
 
@@ -35,8 +37,9 @@ class CsvExporter:
         with open(file_path, 'a', newline='') as file:
             writer = csv.writer(file, delimiter=';')
             if generation_number == 0:
-                writer.writerow(['Generation Number', 'Individual', 'Fitness'])
-            writer.writerow([generation_number, best_individual, best_individual.fitness.values[0]])
+                writer.writerow(['Generation Number', 'Individual', 'Fitness', 'Height'])
+            writer.writerow([generation_number, best_individual, best_individual.fitness.values[0],
+                             get_individual_height(best_individual)])
 
     def save_whole_population_for_each_generation(self, population, generation_number, run_number):
         file_name = 'population' + str(generation_number) + '.csv'

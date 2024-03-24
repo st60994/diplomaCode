@@ -7,8 +7,8 @@ from customLogic import koza_custom_two_point_crossover, trim_individual, koza_o
 class SecondLayerMultiplexer:
     TOURNAMENT_SIZE = 2
     ELITES_SIZE = 1
-    NUMBER_OF_GENERATIONS = 51
-    POPULATION_SIZE = 500
+    NUMBER_OF_GENERATIONS = 10
+    POPULATION_SIZE = 200
     MIN_TREE_INIT_HEIGHT = 2
     MAX_TREE_INIT_HEIGHT = 6
     CROSSOVER_PROBABILITY = 0.9

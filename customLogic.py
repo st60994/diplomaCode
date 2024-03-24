@@ -149,16 +149,30 @@ def gp_evolution(process_id, new_terminal_list, elites_size, population_size, nu
         population = toolbox.population(n=population_size)
         if algorithm_type == "MUX" and layer_number == 1 and number_of_layers == 2:
             input_combinations = generate_all_input_combinations_for_model(process_id, process_address_map)
+        if algorithm_type == "MUX" and layer_number == 1 and number_of_layers == 2:  # only do it for first layer of two layer mux
+            fitnesses = toolbox.map(toolbox.evaluate, population, [input_combinations] * len(population))
+            for ind, fit in zip(population, fitnesses):
+                ind.fitness.values = fit
+        else:
+            fitnesses = toolbox.map(toolbox.evaluate, population)
+            for ind, fit in zip(population, fitnesses):
+                ind.fitness.values = fit
     except:
         print("Error during initial population generation")
         traceback.print_exc()
+
     for index in range(number_of_generations):
         try:
             print(str(process_id) + ": Generation " + str(index))
-            offspring = algorithms.varAnd(population, toolbox, cxpb=crossover_probability,
+
+            offspring = toolbox.select(population, population_size)
+
+            # Genetic operations
+            offspring = algorithms.varAnd(offspring, toolbox, cxpb=crossover_probability,
                                           mutpb=mutation_probability)  # perform only mutation + crossover
-            for individual in offspring:
-                toolbox.trim(individual)
+            # Trimming
+            for i, individual in enumerate(offspring):
+                offspring[i] = toolbox.trim(individual)
 
             # Need to manually evaluate the offspring
             if algorithm_type == "MUX" and layer_number == 1 and number_of_layers == 2:  # only do it for first layer of two layer mux
@@ -170,40 +184,38 @@ def gp_evolution(process_id, new_terminal_list, elites_size, population_size, nu
                 for ind, fit in zip(offspring, fitnesses):
                     ind.fitness.values = fit
 
-            combined_population = population + offspring
-
-            # Implementation of elitism
             hall_of_fame.update(population)
             elites = hall_of_fame.items
-
-            offspring = toolbox.select(combined_population, population_size - elites_size)
-            offspring = offspring + elites
-
-            # Replace the current population by the offspring
-            population[:] = offspring
+            population[:] = offspring + elites
+            # Save best individual
+            best_individual = tools.selBest(population, k=1)[0]
             if process_id == 0:  # Only save the for process_id = 0 to avoid unnecessary delays
-                csv_exporter.save_best_individual_for_each_generation(tools.selBest(population, k=1)[0], index,
-                                                                      layer_number)
-            best_individual = tools.selBest(combined_population, k=1)[0]
+                csv_exporter.save_best_individual_for_each_generation(best_individual, index, layer_number)
+
+            # Break condition
             if algorithm_type == "approximation":
                 if best_individual.fitness.values[0] == 0:
                     break
-            else:  # TODO check if not bugging
-                if layer_number == 1 and best_individual.fitness.values[0] == len(input_combinations):
+            else:
+                if layer_number == 1 and number_of_layers == 2 and best_individual.fitness.values[0] == len(
+                        input_combinations):
                     break
                 elif best_individual.fitness.values[0] == 2048.0:
                     break
+
         except:
             if layer_number == 1:
                 print("Exception in first layer generation loop")
             else:
                 print("Exception in second layer generation loop")
             traceback.print_exc()
+
     if terminals_from_first_layer != 0 and new_terminal_list is not None:
         if terminals_from_first_layer == 1:
             new_terminal_list.append(tools.selBest(population, k=1)[0])
         else:
             new_terminal_list += population
+
     if len(population) != 0:
         best_current_individual = tools.selBest(population, k=1)[0]
         print(f"Best individual: {best_current_individual}, Fitness: {best_current_individual.fitness.values[0]}")

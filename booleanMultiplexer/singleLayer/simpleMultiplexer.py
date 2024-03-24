@@ -7,18 +7,14 @@ import multiprocessing
 from booleanMultiplexer.gpBooleanMultiplexerInitialization import GpFirstLayerMUXInitializer, NUMBER_OF_RUNS, \
     MAX_TREE_HEIGHT
 from csvExport import CsvExporter
-from customLogic import koza_custom_two_point_crossover, trim_individual, koza_over_selection, gp_evolution
-
-BOOTSTRAPPING_PERCENTAGE = 60
+from customLogic import koza_custom_two_point_crossover, trim_individual, gp_evolution
 
 TOURNAMENT_SIZE = 2
 ELITES_SIZE = 1
-NUMBER_OF_GENERATIONS = 51
-POPULATION_SIZE = 4000
-NUMBER_OF_SUB_MODELS = 1
+NUMBER_OF_GENERATIONS = 100
+POPULATION_SIZE = 200
 MIN_TREE_INIT_HEIGHT = 2
 MAX_TREE_INIT_HEIGHT = 6
-TERMINALS_FROM_FIRST_LAYER = 1
 CROSSOVER_PROBABILITY = 0.9
 MUTATION_PROBABILITY = 0.05
 
@@ -27,12 +23,9 @@ first_layer_params = {
     'ELITES_SIZE': ELITES_SIZE,
     'NUMBER_OF_GENERATIONS': NUMBER_OF_GENERATIONS,
     'POPULATION_SIZE': POPULATION_SIZE,
-    'NUMBER_OF_SUB_MODELS': NUMBER_OF_SUB_MODELS,
     'MAX_TREE_HEIGHT': MAX_TREE_HEIGHT,
     'MIN_TREE_INIT_HEIGHT': MIN_TREE_INIT_HEIGHT,
     'MAX_TREE_INIT_HEIGHT': MAX_TREE_INIT_HEIGHT,
-    'BOOTSTRAPPING_PERCENTAGE': BOOTSTRAPPING_PERCENTAGE,
-    'TERMINALS_FROM_FIRST_LAYER': TERMINALS_FROM_FIRST_LAYER,
     'CROSSOVER_PROBABILITY': CROSSOVER_PROBABILITY,
     'MUTATION_PROBABILITY': MUTATION_PROBABILITY,
 }
@@ -47,7 +40,7 @@ class FirstLayer:
         self.input_combinations = self.generate_all_possible_input_combination()
 
     # Define the fitness measure
-    def __evaluate_individual(self, individual):
+    def __evaluate_individual_MUX(self, individual):
         function = gp.compile(expr=individual, pset=self.pset)
         correct_assessments = 0
         for input_combination in self.input_combinations:
@@ -83,8 +76,8 @@ class FirstLayer:
         self.toolbox.register("population", tools.initRepeat, list, self.toolbox.individual)
         self.toolbox.register("mate", koza_custom_two_point_crossover)
         self.toolbox.register("mutate", gp.mutNodeReplacement, pset=self.pset)
-        self.toolbox.register("evaluate", self.__evaluate_individual)
-        self.toolbox.register("select", koza_over_selection, tournsize=TOURNAMENT_SIZE, population_size=POPULATION_SIZE)
+        self.toolbox.register("evaluate", self.__evaluate_individual_MUX)
+        self.toolbox.register("select", tools.selTournament, tournsize=TOURNAMENT_SIZE) # no longer need kozas overselection, because the population is quite small
         self.toolbox.register("trim", trim_individual, max_tree_height=MAX_TREE_HEIGHT, pset=self.pset,
                               csv_export=self.csv_exporter)
 
@@ -113,8 +106,6 @@ if __name__ == "__main__":
             if run_number == 0:
                 csvExporter.export_run_params_to_csv(first_layer_params, {})
             csvExporter.save_best_individual(best_individual, run_number)
-            if best_individual.fitness.values[0] == 2048.0:
-                break
     except:
         traceback.print_exc()
 

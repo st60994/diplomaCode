@@ -35,10 +35,9 @@ class GpFirstLayerInitializer:
         self.pset.addPrimitive(protected_add, 2)
         self.pset.addPrimitive(operator.sub, 2)
         self.pset.addPrimitive(operator.mul, 2)
-
-    # self.pset.addPrimitive(sqrt, 1)
-    # self.pset.addPrimitive(pow2, 1)
-    # self.pset.addPrimitive(pow3, 1)
+        # self.pset.addPrimitive(sqrt, 1)
+        # self.pset.addPrimitive(pow2, 1)
+        # self.pset.addPrimitive(pow3, 1)
 
     def __create_terminal_set(self):
         self.pset.addTerminal(-1.0)

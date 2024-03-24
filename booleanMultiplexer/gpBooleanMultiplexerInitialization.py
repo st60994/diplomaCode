@@ -2,7 +2,7 @@ from deap import gp
 
 from methodDefinitions import custom_and, custom_or, custom_not, custom_if
 
-NUMBER_OF_RUNS = 1000
+NUMBER_OF_RUNS = 500
 MAX_TREE_HEIGHT = 17
 
 
